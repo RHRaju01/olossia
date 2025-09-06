@@ -1,206 +1,132 @@
-import { User } from '../models/User.js';
-import { hashPassword, comparePassword, generateToken, generateRefreshToken } from '../config/auth.js';
-import jwt from 'jsonwebtoken';
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { pool } from "../config/database.js";
 
-export const authController = {
-  // Register new user
-  register: async (req, res) => {
-    try {
-      const { email, password, firstName, lastName } = req.body;
+const signup = async (req, res) => {
+  try {
+    const { email, password, firstName, lastName } = req.body;
 
-      // Check if user already exists
-      const existingUser = await User.findByEmail(email);
-      if (existingUser) {
-        return res.status(409).json({
-          success: false,
-          message: 'User with this email already exists'
-        });
-      }
+    // Check if user exists
+    const userExists = await pool.query(
+      "SELECT * FROM users WHERE email = $1",
+      [email]
+    );
 
-      // Hash password
-      const hashedPassword = await hashPassword(password);
-
-      // Create user
-      const user = await User.create({
-        email,
-        password: hashedPassword,
-        firstName,
-        lastName
-      });
-
-      // Generate tokens
-      const token = generateToken({ userId: user.id, email: user.email });
-      const refreshToken = generateRefreshToken({ userId: user.id });
-
-      res.status(201).json({
-        success: true,
-        message: 'User registered successfully',
-        data: {
-          user: {
-            id: user.id,
-            email: user.email,
-            firstName: user.first_name,
-            lastName: user.last_name
-          },
-          token,
-          refreshToken
-        }
-      });
-    } catch (error) {
-      console.error('Registration error:', error);
-      res.status(500).json({
+    if (userExists.rows.length > 0) {
+      return res.status(400).json({
         success: false,
-        message: 'Internal server error during registration'
+        message: "Email already registered",
       });
     }
-  },
 
-  // Login user
-  login: async (req, res) => {
-    try {
-      const { email, password } = req.body;
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-      // Find user
-      const user = await User.findByEmail(email);
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid email or password'
-        });
-      }
+    // Create user
+    const query = `
+            INSERT INTO users (email, password_hash, first_name, last_name, role_id)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, email, first_name, last_name, created_at;
+        `;
 
-      // Check if user is active
-      if (user.status !== 'active') {
-        return res.status(401).json({
-          success: false,
-          message: 'Account is not active'
-        });
-      }
+    const values = [email, hashedPassword, firstName, lastName, 2];
+    const result = await pool.query(query, values);
 
-      // Verify password
-      const isValidPassword = await comparePassword(password, user.password_hash);
-      if (!isValidPassword) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid email or password'
-        });
-      }
-
-      // Update last login
-      await User.updateLastLogin(user.id);
-
-      // Generate tokens
-      const token = generateToken({ userId: user.id, email: user.email });
-      const refreshToken = generateRefreshToken({ userId: user.id });
-
-      res.json({
-        success: true,
-        message: 'Login successful',
-        data: {
-          user: {
-            id: user.id,
-            email: user.email,
-            firstName: user.first_name,
-            lastName: user.last_name,
-            role: user.role
-          },
-          token,
-          refreshToken
-        }
-      });
-    } catch (error) {
-      console.error('Login error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error during login'
-      });
+    if (!result.rows[0]) {
+      throw new Error("User creation failed");
     }
-  },
 
-  // Get current user profile
-  getProfile: async (req, res) => {
-    try {
-      const user = await User.findById(req.user.id);
-      
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found'
-        });
+    const dbUser = result.rows[0];
+
+    // Generate token
+    const token = jwt.sign(
+      { id: dbUser.id },
+      process.env.JWT_SECRET || "your-secret-key",
+      {
+        expiresIn: "24h",
       }
+    );
 
-      res.json({
-        success: true,
-        data: {
-          user: {
-            id: user.id,
-            email: user.email,
-            firstName: user.first_name,
-            lastName: user.last_name,
-            role: user.role,
-            status: user.status,
-            createdAt: user.created_at
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Get profile error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error'
-      });
-    }
-  },
-
-  // Logout (client-side token removal)
-  logout: async (req, res) => {
-    res.json({
+    return res.status(201).json({
       success: true,
-      message: 'Logged out successfully'
+      data: {
+        token: token,
+        refreshToken: token, // Using same token as refresh token for now
+        user: {
+          id: dbUser.id,
+          email: dbUser.email,
+          firstName: dbUser.first_name,
+          lastName: dbUser.last_name,
+          createdAt: dbUser.created_at,
+        },
+      },
     });
-  },
-
-  // Refresh token
-  refresh: async (req, res) => {
-    try {
-      const { refreshToken } = req.body;
-
-      if (!refreshToken) {
-        return res.status(400).json({
-          success: false,
-          message: 'Refresh token is required'
-        });
-      }
-
-      // Verify refresh token
-      const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-      
-      // Find user
-      const user = await User.findById(decoded.userId);
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid refresh token'
-        });
-      }
-
-      // Generate new tokens
-      const token = generateToken({ userId: user.id, email: user.email });
-      const newRefreshToken = generateRefreshToken({ userId: user.id });
-
-      res.json({
-        success: true,
-        data: {
-          token,
-          refreshToken: newRefreshToken
-        }
-      });
-    } catch (error) {
-      console.error('Token refresh error:', error);
-      res.status(401).json({
-        success: false,
-        message: 'Invalid refresh token'
-      });
-    }
+  } catch (error) {
+    console.error("Signup error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error creating user",
+      error: error.message,
+    });
   }
 };
+
+const signin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const result = await pool.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
+
+    const user = result.rows[0];
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    const token = jwt.sign(
+      { id: user.id },
+      process.env.JWT_SECRET || "your-secret-key",
+      {
+        expiresIn: "24h",
+      }
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        token: token,
+        refreshToken: token, // Using same token as refresh token for now
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Signin error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error signing in",
+      error: error.message,
+    });
+  }
+};
+
+// Export both functions at once
+export { signup, signin };

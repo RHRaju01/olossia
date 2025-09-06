@@ -1,49 +1,68 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, CheckCircle, X } from 'lucide-react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import {
+  Mail,
+  Lock,
+  User,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  AlertCircle,
+  CheckCircle,
+  X,
+} from "lucide-react";
 
 export const AuthOverlay = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   // Determine mode based on current URL
-  const isSignUp = location.pathname === '/register';
-  
+  const isSignUp = location.pathname === "/register";
+
   const [showPassword, setShowPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const overlayRef = useRef(null);
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
 
   const { login, register, error, clearError } = useAuth();
 
-  const handleInputChange = useCallback((e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const handleInputChange = useCallback(
+    (e) => {
+      const { name, value } = e.target;
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
 
-    // Calculate password strength for sign up
-    if (name === 'password' && isSignUp) {
-      calculatePasswordStrength(value);
-    }
-    
-    // Clear error when user starts typing
-    if (error) {
-      clearError();
-    }
-  }, [isSignUp, error, clearError]);
+      // Calculate password strength for sign up
+      if (name === "password" && isSignUp) {
+        calculatePasswordStrength(value);
+      }
+
+      // Clear error when user starts typing
+      if (error) {
+        clearError();
+      }
+    },
+    [isSignUp, error, clearError]
+  );
 
   const calculatePasswordStrength = useCallback((password) => {
     let strength = 0;
@@ -56,64 +75,67 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
   }, []);
 
   const getPasswordStrengthColor = useMemo(() => {
-    if (passwordStrength <= 2) return 'bg-red-500';
-    if (passwordStrength <= 3) return 'bg-yellow-500';
-    if (passwordStrength <= 4) return 'bg-blue-500';
-    return 'bg-green-500';
+    if (passwordStrength <= 2) return "bg-red-500";
+    if (passwordStrength <= 3) return "bg-yellow-500";
+    if (passwordStrength <= 4) return "bg-blue-500";
+    return "bg-green-500";
   }, [passwordStrength]);
 
   const getPasswordStrengthText = useMemo(() => {
-    if (passwordStrength <= 2) return 'Weak';
-    if (passwordStrength <= 3) return 'Fair';
-    if (passwordStrength <= 4) return 'Good';
-    return 'Strong';
+    if (passwordStrength <= 2) return "Weak";
+    if (passwordStrength <= 3) return "Fair";
+    if (passwordStrength <= 4) return "Good";
+    return "Strong";
   }, [passwordStrength]);
 
-  const handleSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    
-    if (isSignUp && formData.password !== formData.confirmPassword) {
-      return;
-    }
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
 
-    setIsSubmitting(true);
+      if (isSignUp && formData.password !== formData.confirmPassword) {
+        return;
+      }
 
-    let result;
-    if (isSignUp) {
-      result = await register({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        password: formData.password
-      });
-    } else {
-      result = await login({
-        email: formData.email,
-        password: formData.password
-      });
-    }
-    
-    if (result.success) {
-      onClose();
-      resetForm();
-    }
-    
-    setIsSubmitting(false);
-  }, [isSignUp, formData, register, login, onClose]);
+      setIsSubmitting(true);
+
+      let result;
+      if (isSignUp) {
+        result = await register({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+        });
+      } else {
+        result = await login({
+          email: formData.email,
+          password: formData.password,
+        });
+      }
+
+      if (result.success) {
+        onClose();
+        resetForm();
+      }
+
+      setIsSubmitting(false);
+    },
+    [isSignUp, formData, register, login, onClose]
+  );
 
   const resetForm = useCallback(() => {
     setFormData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      password: '',
-      confirmPassword: ''
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
     });
     setPasswordStrength(0);
   }, []);
 
   const toggleMode = useCallback(() => {
-    const newPath = isSignUp ? '/login' : '/register';
+    const newPath = isSignUp ? "/login" : "/register";
     navigate(newPath, { replace: true });
     resetForm();
     clearError();
@@ -125,8 +147,8 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
     clearError();
   }, [onClose, resetForm, clearError]);
 
-  const passwordsMatch = useMemo(() => 
-    formData.password === formData.confirmPassword, 
+  const passwordsMatch = useMemo(
+    () => formData.password === formData.confirmPassword,
     [formData.password, formData.confirmPassword]
   );
 
@@ -135,15 +157,15 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={handleClose}
       />
-      
+
       {/* Modal content */}
-      <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto scrollbar-hide">
+      <div className="relative w-full max-w-md max-h-[95vh] overflow-y-auto scrollbar-hide">
         <Card className="border-0 shadow-2xl rounded-3xl overflow-hidden bg-white">
-          <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white text-center py-8">
+          <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white text-center py-6">
             <div className="flex items-center justify-between">
               <CardTitle className="text-2xl font-bold">
                 {isSignUp ? "Join OLOSSIA" : "Welcome Back"}
@@ -158,10 +180,9 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
               </Button>
             </div>
             <p className="text-purple-100 mt-2">
-              {isSignUp 
-                ? "Create your account to start your fashion journey" 
-                : "Sign in to access your personalized shopping experience"
-              }
+              {isSignUp
+                ? "Create your account to start your fashion journey"
+                : "Sign in to access your personalized shopping"}
             </p>
           </CardHeader>
 
@@ -173,12 +194,14 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {/* Name fields for sign up */}
               {isSignUp && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-700">First Name</label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      First Name
+                    </label>
                     <div className="relative">
                       <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                       <Input
@@ -194,7 +217,9 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-700">Last Name</label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      Last Name
+                    </label>
                     <Input
                       type="text"
                       name="lastName"
@@ -210,7 +235,9 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
 
               {/* Email field */}
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">Email Address</label>
+                <label className="text-sm font-semibold text-gray-700">
+                  Email Address
+                </label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <Input
@@ -227,7 +254,9 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
 
               {/* Password field */}
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">Password</label>
+                <label className="text-sm font-semibold text-gray-700">
+                  Password
+                </label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <Input
@@ -235,7 +264,11 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
+                    placeholder={
+                      isSignUp
+                        ? "Create a strong password"
+                        : "Enter your password"
+                    }
                     className="pl-12 pr-12 py-3 rounded-xl border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
                     required
                   />
@@ -244,26 +277,38 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
                   </button>
                 </div>
-                
+
                 {/* Password strength indicator for sign up */}
                 {isSignUp && formData.password && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Password strength:</span>
-                      <span className={`text-xs font-medium ${
-                        passwordStrength <= 2 ? 'text-red-500' :
-                        passwordStrength <= 3 ? 'text-yellow-500' :
-                        passwordStrength <= 4 ? 'text-blue-500' : 'text-green-500'
-                      }`}>
-                        {getPasswordStrengthText()}
+                      <span className="text-xs text-gray-500">
+                        Password strength:
+                      </span>
+                      <span
+                        className={`text-xs font-medium ${
+                          passwordStrength <= 2
+                            ? "text-red-500"
+                            : passwordStrength <= 3
+                            ? "text-yellow-500"
+                            : passwordStrength <= 4
+                            ? "text-blue-500"
+                            : "text-green-500"
+                        }`}
+                      >
+                        {getPasswordStrengthText}
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthColor()}`}
+                      <div
+                        className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthColor}`}
                         style={{ width: `${(passwordStrength / 5) * 100}%` }}
                       ></div>
                     </div>
@@ -274,7 +319,9 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
               {/* Confirm password for sign up */}
               {isSignUp && (
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Confirm Password</label>
+                  <label className="text-sm font-semibold text-gray-700">
+                    Confirm Password
+                  </label>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <Input
@@ -284,7 +331,9 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
                       onChange={handleInputChange}
                       placeholder="Confirm your password"
                       className={`pl-12 pr-12 py-3 rounded-xl border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 ${
-                        formData.confirmPassword && !passwordsMatch ? 'border-red-300 focus:border-red-400' : ''
+                        formData.confirmPassword && !passwordsMatch
+                          ? "border-red-300 focus:border-red-400"
+                          : ""
                       }`}
                       required
                     />
@@ -299,7 +348,9 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
                     )}
                   </div>
                   {formData.confirmPassword && !passwordsMatch && (
-                    <p className="text-sm text-red-500">Passwords do not match</p>
+                    <p className="text-sm text-red-500">
+                      Passwords do not match
+                    </p>
                   )}
                 </div>
               )}
@@ -308,8 +359,13 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
               {!isSignUp && (
                 <div className="flex items-center justify-between">
                   <label className="flex items-center">
-                    <input type="checkbox" className="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
-                    <span className="ml-2 text-sm text-gray-600">Remember me</span>
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-600">
+                      Remember me
+                    </span>
                   </label>
                   <Button
                     type="button"
@@ -324,18 +380,24 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
               {/* Terms for sign up */}
               {isSignUp && (
                 <label className="flex items-start gap-3">
-                  <input 
-                    type="checkbox" 
-                    className="mt-1 rounded border-gray-300 text-purple-600 focus:ring-purple-500" 
-                    required 
+                  <input
+                    type="checkbox"
+                    className="mt-1 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    required
                   />
                   <span className="text-sm text-gray-600 leading-relaxed">
-                    I agree to the{' '}
-                    <Button variant="ghost" className="text-purple-600 hover:text-purple-700 p-0 h-auto text-sm underline">
+                    I agree to the{" "}
+                    <Button
+                      variant="ghost"
+                      className="text-purple-600 hover:text-purple-700 p-0 h-auto text-sm underline"
+                    >
                       Terms of Service
-                    </Button>{' '}
-                    and{' '}
-                    <Button variant="ghost" className="text-purple-600 hover:text-purple-700 p-0 h-auto text-sm underline">
+                    </Button>{" "}
+                    and{" "}
+                    <Button
+                      variant="ghost"
+                      className="text-purple-600 hover:text-purple-700 p-0 h-auto text-sm underline"
+                    >
                       Privacy Policy
                     </Button>
                   </span>
@@ -345,17 +407,20 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
               {/* Submit button */}
               <Button
                 type="submit"
-                disabled={isSubmitting || (isSignUp && (!passwordsMatch || passwordStrength < 3))}
+                disabled={
+                  isSubmitting ||
+                  (isSignUp && (!passwordsMatch || passwordStrength < 3))
+                }
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    {isSignUp ? 'Creating Account...' : 'Signing In...'}
+                    {isSignUp ? "Creating Account..." : "Signing In..."}
                   </div>
                 ) : (
                   <>
-                    {isSignUp ? 'Create Account' : 'Sign In'}
+                    {isSignUp ? "Create Account" : "Sign In"}
                     <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-200" />
                   </>
                 )}
@@ -368,7 +433,9 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
                 <div className="w-full border-t border-gray-200" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-500 font-medium">or</span>
+                <span className="px-4 bg-white text-gray-500 font-medium">
+                  or
+                </span>
               </div>
             </div>
 
@@ -379,7 +446,11 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
                 variant="outline"
                 className="w-full py-3 rounded-xl border-2 hover:bg-gray-50 transition-all duration-200"
               >
-                <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" className="w-5 h-5 mr-3" />
+                <img
+                  src="https://developers.google.com/identity/images/g-logo.png"
+                  alt="Google"
+                  className="w-5 h-5 mr-3"
+                />
                 Continue with Google
               </Button>
               <Button
@@ -397,7 +468,9 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
             {/* Toggle between sign in and sign up */}
             <div className="text-center mt-8 pt-6 border-t border-gray-100">
               <p className="text-gray-600">
-                {isSignUp ? "Already have an account?" : "Don't have an account?"}
+                {isSignUp
+                  ? "Already have an account?"
+                  : "Don't have an account?"}
               </p>
               <Link
                 to={isSignUp ? "/login" : "/register"}
