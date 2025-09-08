@@ -13,7 +13,7 @@ const cartAPI = {
   },
 
   // Add item to cart
-  addItem: async (itemData) => {
+  addItem: async (productId, quantity) => {
     try {
       const response = await apiClient.post('/cart/items', {
         product_id: productId,
@@ -24,6 +24,10 @@ const cartAPI = {
       console.error('Error adding item to cart:', error);
       throw error;
     }
+  },
+
+  // Update cart item quantity
+  updateItem: async (itemId, quantity) => {
     try {
       const response = await apiClient.put(`/cart/items/${itemId}`, {
         quantity
@@ -56,4 +60,6 @@ const cartAPI = {
       throw error;
     }
   }
-}
+};
+
+export default cartAPI;
