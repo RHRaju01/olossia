@@ -64,6 +64,7 @@ apiClient.interceptors.response.use(
           }
         }
       } catch (refreshError) {
+      }
       const originalRequest = error.config;
       
       // If this is not a retry and we have a refresh token
