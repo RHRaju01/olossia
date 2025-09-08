@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { tokenStorage } from '../../utils/tokenStorage';
+import { getToken, removeToken, getRefreshToken, setToken, setRefreshToken } from '../../utils/tokenStorage';
 
 // Create axios instance
 const apiClient = axios.create({
@@ -22,7 +22,7 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
+  async (error) => {
     return Promise.reject(error);
   }
 );
@@ -64,9 +64,39 @@ apiClient.interceptors.response.use(
           }
         }
       } catch (refreshError) {
-        // Refresh failed, clear tokens and redirect to login
-        tokenStorage.clearAll();
-        window.location.href = '/login';
+      const originalRequest = error.config;
+      
+      // If this is not a retry and we have a refresh token
+      if (!originalRequest._retry && getRefreshToken()) {
+        originalRequest._retry = true;
+        
+        try {
+          const refreshToken = getRefreshToken();
+          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+            refreshToken
+          });
+          
+          if (response.data.success) {
+            const { token, refreshToken: newRefreshToken } = response.data.data;
+            setToken(token);
+            setRefreshToken(newRefreshToken);
+            
+            // Update the authorization header and retry the original request
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return apiClient(originalRequest);
+          }
+        } catch (refreshError) {
+          // Refresh failed, clear tokens and redirect
+          removeToken();
+          removeRefreshToken();
+          window.location.href = '/';
+          return Promise.reject(refreshError);
+        }
+      } else {
+        // No refresh token or refresh already failed
+        removeToken();
+        removeRefreshToken();
+        window.location.href = '/';
       }
     }
 

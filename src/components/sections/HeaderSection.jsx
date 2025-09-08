@@ -178,11 +178,20 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
             
             {/* User button */}
             <div className="relative hidden sm:block z-50">
-              <UserAvatar 
-                user={user}
-                isAuthenticated={isAuthenticated}
+              <Button
+                variant="ghost"
+                size="icon" 
+                className="rounded-full hover:bg-gray-100"
                 onClick={handleUserClick}
-              />
+              >
+                <User className="w-5 h-5" />
+              </Button>
+            </div>
+
+            {/* Wishlist button with dropdown */}
+            <div className="relative hidden sm:block wishlist-dropdown-container z-50">
+              <Button 
+                variant="ghost" 
                 size="icon" 
                 className="rounded-full hover:bg-gray-100"
                 onMouseEnter={() => handleDesktopDropdownOpen('wishlist')}

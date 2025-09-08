@@ -1,4 +1,40 @@
 // Token storage utility with security best practices
+const TOKEN_KEY = 'auth_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
+
+export const getToken = () => {
+  try {
+    return localStorage.getItem('olossia_token');
+  } catch (error) {
+    console.error('Error getting token:', error);
+    return null;
+  }
+};
+
+export const setToken = (token) => {
+  try {
+    localStorage.setItem('olossia_token', token);
+  } catch (error) {
+    console.error('Error setting token:', error);
+  }
+};
+
+export const removeToken = () => {
+  localStorage.removeItem(TOKEN_KEY);
+};
+
+export const getRefreshToken = () => {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+};
+
+export const setRefreshToken = (token) => {
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
+};
+
+export const removeRefreshToken = () => {
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+};
+
 export const tokenStorage = {
   // Get access token
   getToken: () => {
