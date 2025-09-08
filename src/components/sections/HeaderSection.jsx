@@ -12,18 +12,22 @@ import { CompareDropdown } from "../CompareDropdown/CompareDropdown";
 import { useCart } from "../../contexts/CartContext";
 import { useWishlist } from "../../contexts/WishlistContext";
 import { useCompare } from "../../contexts/CompareContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { UserDropdown } from "../UserDropdown/UserDropdown";
 
 export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
   const navigate = useNavigateWithScroll();
   const { totals } = useCart();
   const { items: wishlistItems } = useWishlist();
   const { items: compareItems } = useCompare();
+  const { isAuthenticated, user } = useAuth();
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
   const navItems = [
     { name: "Women", path: "/products?category=women" },
@@ -52,6 +56,9 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
       if (!isMenuOpen && !event.target.closest('.compare-dropdown-container')) {
         setIsCompareOpen(false);
       }
+      if (!isMenuOpen && !event.target.closest('.user-dropdown-container')) {
+        setIsUserDropdownOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -68,6 +75,8 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
     setIsWishlistOpen(dropdownType === 'wishlist');
     setIsNotificationOpen(dropdownType === 'notification');
     setIsCompareOpen(dropdownType === 'compare');
+    setIsUserDropdownOpen(dropdownType === 'user');
+    setIsUserDropdownOpen(dropdownType === 'user');
   };
 
   // Mobile menu dropdown toggle (doesn't close mobile menu)
@@ -105,16 +114,27 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
       setIsWishlistOpen(false);
       setIsNotificationOpen(false);
       setIsCompareOpen(false);
+    } else if (dropdownType === 'user') {
+      setIsUserDropdownOpen(!isUserDropdownOpen);
+      setIsWishlistOpen(false);
+      setIsNotificationOpen(false);
+      setIsCompareOpen(false);
+      setIsUserDropdownOpen(false);
     }
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100/50">
-      {/* Top promotional bar */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 px-4 text-center">
-        <p className="text-sm font-medium">
-          ✨ Spring Sale: Up to 70% off + Free shipping worldwide
-        </p>
+    if (isAuthenticated) {
+      handleDesktopDropdownOpen('user');
+    } else {
+      onAuthModalOpen();
+      setIsMenuOpen(false);
+      setIsCartOpen(false);
+      setIsWishlistOpen(false);
+      setIsNotificationOpen(false);
+      setIsCompareOpen(false);
+      setIsUserDropdownOpen(false);
+    }
       </div>
 
       {/* Main header */}
@@ -177,15 +197,28 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
             </div>
             
             {/* User button */}
-            <div className="relative hidden sm:block z-50">
+            <div className="relative hidden sm:block user-dropdown-container z-50">
               <Button
                 variant="ghost"
                 size="icon" 
-                className="rounded-full hover:bg-gray-100"
+                className={`rounded-full hover:bg-gray-100 ${isAuthenticated ? 'bg-purple-50 text-purple-600' : ''}`}
                 onClick={handleUserClick}
+                onMouseEnter={() => isAuthenticated && handleDesktopDropdownOpen('user')}
               >
-                <User className="w-5 h-5" />
+                {isAuthenticated ? (
+                  <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                    {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                  </div>
+                ) : (
+                  <User className="w-5 h-5" />
+                )}
               </Button>
+              {!isMenuOpen && isAuthenticated && (
+                <UserDropdown 
+                  isOpen={isUserDropdownOpen} 
+                  onClose={() => setIsUserDropdownOpen(false)} 
+                />
+              )}
             </div>
 
             {/* Wishlist button with dropdown */}
@@ -314,17 +347,73 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
               <Button
                 variant="ghost"
                 onClick={() => {
-                  onAuthModalOpen();
+                  if (isAuthenticated) {
+                    handleMobileDropdownToggle('user');
+                  } else {
+                    onAuthModalOpen();
+                  }
                   setIsMenuOpen(false);
                 }}
                 className="justify-between text-gray-700 hover:text-purple-600 hover:bg-purple-50 mx-4 rounded-xl py-4 text-lg font-medium w-auto"
               >
                 <div className="flex items-center gap-3">
-                  <User className="w-5 h-5" />
-                  <span>Sign In / Register</span>
+                  {isAuthenticated ? (
+                    <>
+                      <div className="w-6 h-6 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                        {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                      </div>
+                      <span>{user?.firstName} {user?.lastName}</span>
+                    </>
+                  ) : (
+                    <>
+                      <User className="w-5 h-5" />
+                      <span>Sign In / Register</span>
+                    </>
+                  )}
                 </div>
                 <ChevronRight className="w-5 h-5" />
               </Button>
+              
+              {/* User dropdown content in mobile menu */}
+              {isAuthenticated && isUserDropdownOpen && (
+                <div className="mx-4 mb-4 bg-gray-50 rounded-xl overflow-hidden">
+                  <div className="p-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white font-bold">
+                        {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{user?.firstName} {user?.lastName}</h4>
+                        <p className="text-sm text-gray-600">{user?.email}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        navigate('/profile');
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full justify-start text-gray-700 hover:text-purple-600 hover:bg-purple-50"
+                    >
+                      <User className="w-4 h-4 mr-3" />
+                      My Profile
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        navigate('/profile?tab=orders');
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full justify-start text-gray-700 hover:text-purple-600 hover:bg-purple-50"
+                    >
+                      <Package className="w-4 h-4 mr-3" />
+                      Order History
+                    </Button>
+                  </div>
+                </div>
+              )}
               
               {/* Wishlist */}
               <Button

@@ -42,11 +42,15 @@ export const authAPI = {
     return response.data;
   },
 
-  async signout() {
+  async logout() {
     removeToken();
     removeRefreshToken();
     // For now, just clear local storage
     // In a real app, you might want to call a logout endpoint
     return Promise.resolve({ success: true });
+  },
+
+  async signout() {
+    return this.logout();
   }
 };
