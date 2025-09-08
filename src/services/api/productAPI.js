@@ -1,16 +1,29 @@
 import apiClient from './client';
 
-export const productAPI = {
+const productAPI = {
   // Get all products with filters
   getProducts: async (params = {}) => {
-    const response = await apiClient.get('/products', { params });
-    return response.data;
+    try {
+      const response = await apiClient.get('/products', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      throw error;
+    }
   },
 
   // Get single product
   getProduct: async (id) => {
-    const response = await apiClient.get(`/products/${id}`);
-    return response.data;
+    try {
+      if (!id) {
+        throw new Error('Product ID is required');
+      }
+      const response = await apiClient.get(`/products/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching product:', error);
+      throw error;
+    }
   },
 
   // Get featured products
@@ -36,14 +49,33 @@ export const productAPI = {
   // Delete product (admin only)
   deleteProduct: async (id) => {
     const response = await apiClient.delete(`/products/${id}`);
-    return response.data;
-  },
+    try {
+      const response = await apiClient.get(`/products/category/${categoryId}`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching products by category:', error);
+      throw error;
+    }
 
   // Search products
   searchProducts: async (query, filters = {}) => {
-    const response = await apiClient.get('/products', {
-      params: { search: query, ...filters }
-    });
-    return response.data;
+    try {
+    try {
+      const response = await apiClient.get('/products/featured');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching featured products:', error);
+      throw error;
+    }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error searching products:', error);
+    try {
+      const response = await apiClient.get('/products/trending');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching trending products:', error);
+      throw error;
+    }
   }
-};
