@@ -26,11 +26,26 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigateWithScroll } from '../utils/navigation';
 
+// Handle URL tab parameter
+const useTabFromURL = () => {
+  const [activeTab, setActiveTab] = useState('profile');
+  
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam && ['profile', 'orders', 'addresses', 'wishlist', 'settings'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, []);
+  
+  return [activeTab, setActiveTab];
+};
+
 export const UserProfilePage = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigateWithScroll();
   
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useTabFromURL();
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState({
     firstName: user?.firstName || '',
