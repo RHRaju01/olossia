@@ -23,6 +23,7 @@ const CartPage = React.lazy(() => import('./pages/CartPage').then(module => ({ d
 const CheckoutPage = React.lazy(() => import('./pages/CheckoutPage').then(module => ({ default: module.CheckoutPage })));
 const OrderSuccessPage = React.lazy(() => import('./pages/OrderSuccessPage').then(module => ({ default: module.OrderSuccessPage })));
 const ComparePage = React.lazy(() => import('./pages/ComparePage').then(module => ({ default: module.ComparePage })));
+const UserProfilePage = React.lazy(() => import('./pages/UserProfilePage').then(module => ({ default: module.UserProfilePage })));
 
 // Loading component
 const PageLoader = () => (
@@ -106,9 +107,7 @@ function App() {
                       {/* Protected customer routes */}
                       <Route path="/profile" element={
                         <ProtectedRoute>
-                          <div className="min-h-screen flex items-center justify-center">
-                            <h1 className="text-2xl font-bold">User Profile Coming Soon</h1>
-                          </div>
+                          <UserProfilePage />
                         </ProtectedRoute>
                       } />
                     </Route>
