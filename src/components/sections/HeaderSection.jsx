@@ -137,7 +137,7 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
   };
 
   return (
-    <header className="bg-white shadow-sm">
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm transition-all duration-200">
       <div className="relative">
         {/* Main container div */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -198,36 +198,6 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                   <NotificationDropdown
                     isOpen={isNotificationOpen}
                     onClose={() => setIsNotificationOpen(false)}
-                  />
-                )}
-              </div>
-
-              {/* User button */}
-              <div className="relative hidden sm:block user-dropdown-container z-50">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`rounded-full hover:bg-gray-100 ${
-                    isAuthenticated ? "bg-purple-50 text-purple-600" : ""
-                  }`}
-                  onClick={handleUserClick}
-                  onMouseEnter={() =>
-                    isAuthenticated && handleDesktopDropdownOpen("user")
-                  }
-                >
-                  {isAuthenticated ? (
-                    <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                      {user?.firstName?.charAt(0)}
-                      {user?.lastName?.charAt(0)}
-                    </div>
-                  ) : (
-                    <User className="w-5 h-5" />
-                  )}
-                </Button>
-                {!isMenuOpen && isAuthenticated && (
-                  <UserDropdown
-                    isOpen={isUserDropdownOpen}
-                    onClose={() => setIsUserDropdownOpen(false)}
                   />
                 )}
               </div>
@@ -308,6 +278,35 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                   <CartDropdown
                     isOpen={isCartOpen}
                     onClose={() => setIsCartOpen(false)}
+                  />
+                )}
+              </div>
+              {/* User button */}
+              <div className="relative hidden sm:block user-dropdown-container z-50">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`rounded-full hover:bg-gray-100 ${
+                    isAuthenticated ? "bg-purple-50 text-purple-600" : ""
+                  }`}
+                  onClick={handleUserClick}
+                  onMouseEnter={() =>
+                    isAuthenticated && handleDesktopDropdownOpen("user")
+                  }
+                >
+                  {isAuthenticated ? (
+                    <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                      {user?.firstName?.charAt(0)}
+                      {user?.lastName?.charAt(0)}
+                    </div>
+                  ) : (
+                    <User className="w-5 h-5" />
+                  )}
+                </Button>
+                {!isMenuOpen && isAuthenticated && (
+                  <UserDropdown
+                    isOpen={isUserDropdownOpen}
+                    onClose={() => setIsUserDropdownOpen(false)}
                   />
                 )}
               </div>
