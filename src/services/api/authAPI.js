@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import apiClient from './client';
 import { getToken, setToken, removeToken, getRefreshToken, setRefreshToken, removeRefreshToken } from '../../utils/tokenStorage';
 
 export const authAPI = {

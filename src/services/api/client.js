@@ -1,9 +1,11 @@
 import axios from 'axios';
 import { getToken, removeToken, getRefreshToken, setToken, setRefreshToken } from '../../utils/tokenStorage';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
 // Create axios instance
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
+  baseURL: API_BASE_URL,
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
@@ -16,87 +18,49 @@ const apiClient = axios.create({
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
   (config) => {
-    const token = tokenStorage.getToken();
+    const token = getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  async (error) => {
+  (error) => {
     return Promise.reject(error);
   }
 );
 
-// Response interceptor for error handling
+// Response interceptor to handle auth errors
 apiClient.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Handle 401 errors (token expired)
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        const refreshToken = tokenStorage.getRefreshToken();
-        
+        const refreshToken = getRefreshToken();
         if (refreshToken) {
-          // Try to refresh the token
-          const response = await axios.post(
-            `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1'}/auth/refresh`,
-            { refreshToken }
-          );
-          
+          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+            refreshToken
+          });
+
           if (response.data.success) {
-            const { token, refreshToken: newRefreshToken } = response.data.data;
+            setToken(response.data.data.token);
+            setRefreshToken(response.data.data.refreshToken);
             
-            // Update stored tokens
-            tokenStorage.setToken(token);
-            if (newRefreshToken) {
-              tokenStorage.setRefreshToken(newRefreshToken);
-            }
-            
-            // Retry original request with new token
-            originalRequest.headers.Authorization = `Bearer ${token}`;
+            // Retry the original request with new token
+            originalRequest.headers.Authorization = `Bearer ${response.data.data.token}`;
             return apiClient(originalRequest);
           }
         }
       } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
       }
-      const originalRequest = error.config;
-      
-      // If this is not a retry and we have a refresh token
-      if (!originalRequest._retry && getRefreshToken()) {
-        originalRequest._retry = true;
-        
-        try {
-          const refreshToken = getRefreshToken();
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refreshToken
-          });
-          
-          if (response.data.success) {
-            const { token, refreshToken: newRefreshToken } = response.data.data;
-            setToken(token);
-            setRefreshToken(newRefreshToken);
-            
-            // Update the authorization header and retry the original request
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return apiClient(originalRequest);
-          }
-        } catch (refreshError) {
-          // Refresh failed, clear tokens and redirect
-          removeToken();
-          removeRefreshToken();
-          window.location.href = '/';
-          return Promise.reject(refreshError);
-        }
-      } else {
-        // No refresh token or refresh already failed
-        removeToken();
-        removeRefreshToken();
+
+      // If refresh fails, clear tokens and redirect
+      removeToken();
+      if (typeof window !== 'undefined') {
         window.location.href = '/';
       }
     }
