@@ -29,8 +29,8 @@ import { UserDropdown } from "../UserDropdown/UserDropdown";
 
 export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
   const navigate = useNavigateWithScroll();
-  const { totals } = useCart();
-  const { items: wishlistItems } = useWishlist();
+  const { itemCount = 0, totalItems = 0, totalPrice = 0 } = useCart();
+  const { items: wishlistItems = [] } = useWishlist();
   const { items: compareItems } = useCompare();
   const { isAuthenticated, user } = useAuth();
 
@@ -268,9 +268,9 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                   }
                 >
                   <ShoppingBag className="w-5 h-5" />
-                  {totals.itemCount > 0 && (
+                  {itemCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                      {totals.itemCount}
+                      {itemCount}
                     </span>
                   )}
                 </Button>

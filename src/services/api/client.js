@@ -1,18 +1,25 @@
-import axios from 'axios';
-import { getToken, removeToken, getRefreshToken, setToken, setRefreshToken } from '../../utils/tokenStorage';
+import axios from "axios";
+import {
+  getToken,
+  removeToken,
+  getRefreshToken,
+  setToken,
+  setRefreshToken,
+} from "../../utils/tokenStorage";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 
 // Create axios instance
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
   headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    "Content-Type": "application/json",
+    Accept: "application/json",
   },
   // Enable request/response compression
-  decompress: true
+  decompress: true,
 });
 
 // Request interceptor to add auth token
@@ -42,26 +49,26 @@ apiClient.interceptors.response.use(
         const refreshToken = getRefreshToken();
         if (refreshToken) {
           const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refreshToken
+            refreshToken,
           });
 
           if (response.data.success) {
             setToken(response.data.data.token);
             setRefreshToken(response.data.data.refreshToken);
-            
+
             // Retry the original request with new token
             originalRequest.headers.Authorization = `Bearer ${response.data.data.token}`;
             return apiClient(originalRequest);
           }
         }
       } catch (refreshError) {
-        console.error('Token refresh failed:', refreshError);
+        console.error("Token refresh failed:", refreshError);
       }
 
       // If refresh fails, clear tokens and redirect
       removeToken();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/';
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
       }
     }
 

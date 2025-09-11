@@ -1,61 +1,74 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from 'react';
-import cartAPI from '../services/api/cartAPI';
-import { useAuth } from './AuthContext';
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
+import cartAPI from "../services/api/cartAPI";
+import { useAuth } from "./AuthContext";
 
 const CartContext = createContext();
 
 const cartReducer = (state, action) => {
   switch (action.type) {
-    case 'SET_LOADING':
+    case "SET_LOADING":
       return {
         ...state,
-        loading: action.payload
+        loading: action.payload,
       };
-    case 'SET_ITEMS':
+    case "SET_ITEMS":
       return {
         ...state,
         items: action.payload,
-        loading: false
+        loading: false,
       };
-    case 'ADD_ITEM':
+    case "ADD_ITEM":
       const existingItemIndex = state.items.findIndex(
-        item => item.product_id === action.payload.product_id && 
-                item.variant_id === action.payload.variant_id
+        (item) => item.product_id === action.payload.product_id
       );
-      
+
       if (existingItemIndex >= 0) {
-        // Don't add if item already exists, just return current state
-        return state;
+        // Update existing item quantity
+        return {
+          ...state,
+          items: state.items.map((item, index) =>
+            index === existingItemIndex
+              ? { ...item, quantity: item.quantity + action.payload.quantity }
+              : item
+          ),
+        };
       }
-      
+
       return {
         ...state,
-        items: [...state.items, action.payload]
+        items: [...state.items, action.payload],
       };
-    case 'UPDATE_ITEM':
+    case "UPDATE_ITEM":
       return {
         ...state,
-        items: state.items.map(item =>
-          item.id === action.payload.id
+        items: state.items.map((item) =>
+          item.product_id === action.payload.product_id
             ? { ...item, quantity: action.payload.quantity }
             : item
-        )
+        ),
       };
-    case 'REMOVE_ITEM':
+    case "REMOVE_ITEM":
       return {
         ...state,
-        items: state.items.filter(item => item.id !== action.payload)
+        items: state.items.filter((item) => item.product_id !== action.payload),
       };
-    case 'CLEAR_CART':
+    case "CLEAR_CART":
       return {
         ...state,
-        items: []
+        items: [],
       };
-    case 'SET_ERROR':
+    case "SET_ERROR":
       return {
         ...state,
         error: action.payload,
-        loading: false
+        loading: false,
       };
     default:
       return state;
@@ -65,7 +78,7 @@ const cartReducer = (state, action) => {
 const initialState = {
   items: [],
   loading: false,
-  error: null
+  error: null,
 };
 
 export const CartProvider = ({ children }) => {
@@ -75,136 +88,153 @@ export const CartProvider = ({ children }) => {
   // Load cart items when user is authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      // Mock cart items for demo (replace with API calls later)
-      const mockItems = [
-        {
-          id: 1,
-          product_id: 'silk-midi-dress',
-          name: "Silk Midi Dress",
-          brand: "ZARA",
-          price: 129,
-          originalPrice: 189,
-          quantity: 1,
-          size: "M",
-          color: "Black",
-          image: "https://images.pexels.com/photos/1926769/pexels-photo-1926769.jpeg?auto=compress&cs=tinysrgb&w=200"
-        },
-        {
-          id: 2,
-          product_id: 'premium-cotton-blazer',
-          name: "Premium Cotton Blazer",
-          brand: "H&M",
-          price: 89,
-          quantity: 2,
-          size: "L",
-          color: "Navy",
-          image: "https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=200"
-        }
-      ];
-      dispatch({ type: 'SET_ITEMS', payload: mockItems });
+      loadCartItems();
     } else {
-      dispatch({ type: 'CLEAR_CART' });
+      dispatch({ type: "CLEAR_CART" });
     }
   }, [isAuthenticated]);
 
-  const addItem = useCallback(async (product, quantity = 1, size = 'M', color = 'Default') => {
+  const loadCartItems = useCallback(async () => {
     try {
-      const cartItem = {
-        id: Date.now(), // Mock ID
-        product_id: product.id,
-        name: product.name,
-        brand: product.brand,
-        price: product.price,
-        originalPrice: product.originalPrice,
-        quantity,
-        size,
-        color,
-        image: product.image
-      };
-
-      dispatch({ type: 'ADD_ITEM', payload: cartItem });
-      return { success: true };
+      dispatch({ type: "SET_LOADING", payload: true });
+      const response = await cartAPI.getItems();
+      if (response.success) {
+        dispatch({ type: "SET_ITEMS", payload: response.data.items });
+      }
     } catch (error) {
-      const message = 'Failed to add item to cart';
-      dispatch({ type: 'SET_ERROR', payload: message });
-      return { success: false, error: message };
+      console.error("Error loading cart items:", error);
+      dispatch({ type: "SET_ERROR", payload: error.message });
+    } finally {
+      dispatch({ type: "SET_LOADING", payload: false });
     }
   }, []);
 
-  const updateItem = useCallback(async (itemId, quantity) => {
-    try {
-      dispatch({ type: 'UPDATE_ITEM', payload: { id: itemId, quantity } });
-      return { success: true };
-    } catch (error) {
-      const message = 'Failed to update item';
-      dispatch({ type: 'SET_ERROR', payload: message });
-      return { success: false, error: message };
-    }
-  }, []);
+  const addItem = useCallback(
+    async (product, quantity = 1) => {
+      try {
+        dispatch({ type: "SET_LOADING", payload: true });
+        const response = await cartAPI.addItem(product.id, quantity);
+        if (response.success) {
+          // Reload cart items to get updated data
+          await loadCartItems();
+          return { success: true };
+        } else {
+          return {
+            success: false,
+            error: response.error || "Failed to add item to cart",
+          };
+        }
+      } catch (error) {
+        console.error("Error adding item to cart:", error);
+        dispatch({ type: "SET_ERROR", payload: error.message });
+        return { success: false, error: error.message };
+      } finally {
+        dispatch({ type: "SET_LOADING", payload: false });
+      }
+    },
+    [loadCartItems]
+  );
 
-  const removeItem = useCallback(async (itemId) => {
-    try {
-      dispatch({ type: 'REMOVE_ITEM', payload: itemId });
-      return { success: true };
-    } catch (error) {
-      const message = 'Failed to remove item';
-      dispatch({ type: 'SET_ERROR', payload: message });
-      return { success: false, error: message };
-    }
-  }, []);
+  const updateItem = useCallback(
+    async (productId, quantity) => {
+      try {
+        dispatch({ type: "SET_LOADING", payload: true });
+        const response = await cartAPI.updateItem(productId, quantity);
+        if (response.success) {
+          await loadCartItems();
+        }
+      } catch (error) {
+        console.error("Error updating cart item:", error);
+        dispatch({ type: "SET_ERROR", payload: error.message });
+      } finally {
+        dispatch({ type: "SET_LOADING", payload: false });
+      }
+    },
+    [loadCartItems]
+  );
+
+  const removeItem = useCallback(
+    async (productId) => {
+      try {
+        dispatch({ type: "SET_LOADING", payload: true });
+        const response = await cartAPI.removeItem(productId);
+        if (response.success) {
+          await loadCartItems();
+        }
+      } catch (error) {
+        console.error("Error removing cart item:", error);
+        dispatch({ type: "SET_ERROR", payload: error.message });
+      } finally {
+        dispatch({ type: "SET_LOADING", payload: false });
+      }
+    },
+    [loadCartItems]
+  );
 
   const clearCart = useCallback(async () => {
     try {
-      dispatch({ type: 'CLEAR_CART' });
-      return { success: true };
+      dispatch({ type: "SET_LOADING", payload: true });
+      const response = await cartAPI.clearCart();
+      if (response.success) {
+        dispatch({ type: "CLEAR_CART" });
+      }
     } catch (error) {
-      const message = 'Failed to clear cart';
-      dispatch({ type: 'SET_ERROR', payload: message });
-      return { success: false, error: message };
+      console.error("Error clearing cart:", error);
+      dispatch({ type: "SET_ERROR", payload: error.message });
+    } finally {
+      dispatch({ type: "SET_LOADING", payload: false });
     }
   }, []);
 
-  const isInCart = useCallback((productId) => {
-    return state.items.some(item => item.product_id === productId);
-  }, [state.items]);
+  const clearError = useCallback(() => {
+    dispatch({ type: "SET_ERROR", payload: null });
+  }, []);
 
   // Calculate totals
   const totals = useMemo(() => {
-    const subtotal = state.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const itemCount = state.items.reduce((sum, item) => sum + item.quantity, 0);
-    
+    const totalItems = state.items.reduce(
+      (sum, item) => sum + (item.quantity || 0),
+      0
+    );
+    const subtotal = state.items.reduce((sum, item) => {
+      const price = item.products ? item.products.price : item.price || 0;
+      return sum + price * (item.quantity || 0);
+    }, 0);
+
+    // Calculate shipping (free shipping over $100)
+    const shipping = subtotal > 100 ? 0 : 10;
+    const total = subtotal + shipping;
+
     return {
+      totalItems,
+      totalPrice: subtotal, // Keep this for backward compatibility
       subtotal,
-      itemCount,
-      shipping: subtotal > 100 ? 0 : 10, // Free shipping over $100
-      total: subtotal + (subtotal > 100 ? 0 : 10)
+      shipping,
+      total,
+      itemCount: state.items.length,
     };
   }, [state.items]);
 
-
-  const value = useMemo(() => ({
+  const value = {
     ...state,
-    totals,
-    isInCart,
+    ...totals,
     addItem,
     updateItem,
     removeItem,
     clearCart,
-  }), [state, totals, isInCart, addItem, updateItem, removeItem, clearCart]);
+    clearError,
+    loadCartItems,
+  };
 
-  return (
-    <CartContext.Provider value={value}>
-      {children}
-    </CartContext.Provider>
-  );
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
 
 export const useCart = () => {
   const context = useContext(CartContext);
-  
   if (!context) {
-    throw new Error('useCart must be used within a CartProvider');
+    throw new Error("useCart must be used within a CartProvider");
   }
-  
   return context;
 };
+
+export default CartContext;

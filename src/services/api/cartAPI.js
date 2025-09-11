@@ -1,51 +1,51 @@
-import apiClient from './client';
+import apiClient from "./client";
 
 const cartAPI = {
   // Get cart items
   getItems: async () => {
     try {
-      const response = await apiClient.get('/cart');
+      const response = await apiClient.get("/cart");
       return response.data;
     } catch (error) {
-      console.error('Error fetching cart:', error);
+      console.error("Error fetching cart:", error);
       throw error;
     }
   },
 
   // Add item to cart
-  addItem: async (productId, quantity) => {
+  addItem: async (productId, quantity = 1) => {
     try {
-      const response = await apiClient.post('/cart/items', {
-        product_id: productId,
-        quantity
+      const response = await apiClient.post("/cart/add", {
+        productId,
+        quantity,
       });
       return response.data;
     } catch (error) {
-      console.error('Error adding item to cart:', error);
+      console.error("Error adding item to cart:", error);
       throw error;
     }
   },
 
   // Update cart item quantity
-  updateItem: async (itemId, quantity) => {
+  updateItem: async (productId, quantity) => {
     try {
-      const response = await apiClient.put(`/cart/items/${itemId}`, {
-        quantity
+      const response = await apiClient.put(`/cart/update/${productId}`, {
+        quantity,
       });
       return response.data;
     } catch (error) {
-      console.error('Error updating cart item:', error);
+      console.error("Error updating cart item:", error);
       throw error;
     }
   },
 
   // Remove item from cart
-  removeItem: async (itemId) => {
+  removeItem: async (productId) => {
     try {
-      const response = await apiClient.delete(`/cart/items/${itemId}`);
+      const response = await apiClient.delete(`/cart/remove/${productId}`);
       return response.data;
     } catch (error) {
-      console.error('Error removing cart item:', error);
+      console.error("Error removing cart item:", error);
       throw error;
     }
   },
@@ -53,13 +53,13 @@ const cartAPI = {
   // Clear entire cart
   clearCart: async () => {
     try {
-      const response = await apiClient.delete('/cart');
+      const response = await apiClient.delete("/cart/clear");
       return response.data;
     } catch (error) {
-      console.error('Error clearing cart:', error);
+      console.error("Error clearing cart:", error);
       throw error;
     }
-  }
+  },
 };
 
 export default cartAPI;

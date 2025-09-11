@@ -2,7 +2,15 @@ import React, { useCallback } from "react";
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
 import { Separator } from "../ui/separator";
-import { Minus, Plus, X, ShoppingBag, ArrowRight, Heart, BarChart3 } from "lucide-react";
+import {
+  Minus,
+  Plus,
+  X,
+  ShoppingBag,
+  ArrowRight,
+  Heart,
+  BarChart3,
+} from "lucide-react";
 import { useCart } from "../../contexts/CartContext";
 import { useWishlist } from "../../contexts/WishlistContext";
 import { useCompare } from "../../contexts/CompareContext";
@@ -15,8 +23,15 @@ const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
       <div className="flex gap-4">
         <div className="relative">
           <img
-            src={item.image}
-            alt={item.name}
+            src={
+              item.image ||
+              (item.images && item.images[0]) ||
+              (item.products &&
+                item.products.images &&
+                item.products.images[0]) ||
+              "/placeholder-image.jpg"
+            }
+            alt={item.name || "Product"}
             className="w-20 h-20 object-cover rounded-xl"
             loading="lazy"
           />
@@ -26,47 +41,77 @@ const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
             </div>
           )}
         </div>
-        
+
         <div className="flex-1 space-y-2">
           <div>
-            <p className="text-xs text-purple-600 font-bold uppercase">{item.brand}</p>
-            <h4 className="font-semibold text-gray-900 leading-tight">{item.name}</h4>
-            <p className="text-sm text-gray-500">Size: {item.size} • Color: {item.color}</p>
+            {item.brand && (
+              <p className="text-xs text-purple-600 font-bold uppercase">
+                {item.brand}
+              </p>
+            )}
+            <h4 className="font-semibold text-gray-900 leading-tight">
+              {item.name ||
+                (item.products && item.products.name) ||
+                "Unknown Product"}
+            </h4>
+            <p className="text-sm text-gray-500">
+              Size: {item.size || "N/A"} • Color: {item.color || "N/A"}
+            </p>
           </div>
-          
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-gray-900">${item.price}</span>
+              <span className="font-bold text-gray-900">
+                ${item.price || (item.products && item.products.price) || 0}
+              </span>
               {item.originalPrice && (
-                <span className="text-sm text-gray-400 line-through">${item.originalPrice}</span>
+                <span className="text-sm text-gray-400 line-through">
+                  ${item.originalPrice}
+                </span>
               )}
             </div>
-            
+
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                  onClick={() =>
+                    onUpdateQuantity(
+                      item.product_id || (item.products && item.products.id),
+                      item.quantity - 1
+                    )
+                  }
                   className="w-8 h-8 rounded-full border-gray-200"
                 >
                   <Minus className="w-3 h-3" />
                 </Button>
-                <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                <span className="w-8 text-center font-semibold">
+                  {item.quantity}
+                </span>
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                  onClick={() =>
+                    onUpdateQuantity(
+                      item.product_id || (item.products && item.products.id),
+                      item.quantity + 1
+                    )
+                  }
                   className="w-8 h-8 rounded-full border-gray-200"
                 >
                   <Plus className="w-3 h-3" />
                 </Button>
               </div>
-              
+
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => onRemoveItem(item.id)}
+                onClick={() =>
+                  onRemoveItem(
+                    item.product_id || (item.products && item.products.id)
+                  )
+                }
                 className="w-8 h-8 rounded-full border-gray-200 hover:border-red-300 hover:bg-red-50"
               >
                 <X className="w-3 h-3 text-red-500" />
@@ -79,23 +124,36 @@ const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
   );
 });
 
-CartItem.displayName = 'CartItem';
+CartItem.displayName = "CartItem";
 
 export const CartDropdown = ({ isOpen, onClose }) => {
-  const { items: cartItems, totals, updateItem, removeItem } = useCart();
+  const {
+    items: cartItems,
+    subtotal,
+    shipping,
+    total,
+    updateItem,
+    removeItem,
+  } = useCart();
   const navigate = useNavigate();
 
-  const handleUpdateQuantity = useCallback(async (itemId, newQuantity) => {
-    if (newQuantity <= 0) {
-      await removeItem(itemId);
-    } else {
-      await updateItem(itemId, newQuantity);
-    }
-  }, [updateItem, removeItem]);
+  const handleUpdateQuantity = useCallback(
+    async (itemId, newQuantity) => {
+      if (newQuantity <= 0) {
+        await removeItem(itemId);
+      } else {
+        await updateItem(itemId, newQuantity);
+      }
+    },
+    [updateItem, removeItem]
+  );
 
-  const handleRemoveItem = useCallback(async (itemId) => {
-    await removeItem(itemId);
-  }, [removeItem]);
+  const handleRemoveItem = useCallback(
+    async (itemId) => {
+      await removeItem(itemId);
+    },
+    [removeItem]
+  );
 
   if (!isOpen) return null;
 
@@ -138,11 +196,14 @@ export const CartDropdown = ({ isOpen, onClose }) => {
                 <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                   <ShoppingBag className="w-10 h-10 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Your cart is empty</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Your cart is empty
+                </h3>
                 <p className="text-gray-500 mb-6 max-w-sm mx-auto">
-                  Discover amazing products and add them to your cart to get started!
+                  Discover amazing products and add them to your cart to get
+                  started!
                 </p>
-                <Button 
+                <Button
                   onClick={onClose}
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-6 py-2 rounded-xl"
                 >
@@ -158,25 +219,25 @@ export const CartDropdown = ({ isOpen, onClose }) => {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotal</span>
-                  <span className="font-semibold">${totals.subtotal}</span>
+                  <span className="font-semibold">${subtotal}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Shipping</span>
                   <span className="font-semibold text-green-600">
-                    {totals.shipping === 0 ? 'Free' : `$${totals.shipping}`}
+                    {shipping === 0 ? "Free" : `$${shipping}`}
                   </span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total</span>
-                  <span>${totals.total}</span>
+                  <span>${total}</span>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <Button 
+                <Button
                   onClick={() => {
-                    navigate('/checkout');
+                    navigate("/checkout");
                     onClose();
                   }}
                   className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 rounded-xl"
@@ -184,10 +245,10 @@ export const CartDropdown = ({ isOpen, onClose }) => {
                   Checkout
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => {
-                    navigate('/cart');
+                    navigate("/cart");
                     onClose();
                   }}
                   className="w-full rounded-xl py-3"
