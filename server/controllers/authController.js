@@ -1,18 +1,20 @@
 import bcrypt from "bcryptjs";
-import { pool } from "../config/database.js";
-import { JWT_CONFIG, generateToken, generateRefreshToken, verifyRefreshToken } from "../config/auth.js";
+import { User } from "../models/User.js";
+import {
+  JWT_CONFIG,
+  generateToken,
+  generateRefreshToken,
+  verifyRefreshToken,
+} from "../config/auth.js";
 
 const signup = async (req, res) => {
   try {
     const { email, password, firstName, lastName } = req.body;
 
     // Check if user exists
-    const userExists = await pool.query(
-      "SELECT * FROM users WHERE email = $1",
-      [email]
-    );
+    const existingUser = await User.findByEmail(email);
 
-    if (userExists.rows.length > 0) {
+    if (existingUser) {
       return res.status(400).json({
         success: false,
         message: "Email already registered",
@@ -23,35 +25,17 @@ const signup = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Get customer role ID
-    const roleResult = await pool.query(
-      "SELECT id FROM roles WHERE name = 'customer'"
-    );
-    
-    if (roleResult.rows.length === 0) {
-      return res.status(500).json({
-        success: false,
-        message: "Customer role not found",
-      });
-    }
+    // Create user (User.create will handle getting customer role ID)
+    const dbUser = await User.create({
+      email,
+      password: hashedPassword,
+      firstName,
+      lastName,
+    });
 
-    const customerRoleId = roleResult.rows[0].id;
-
-    // Create user
-    const query = `
-      INSERT INTO users (email, password_hash, first_name, last_name, role_id)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, email, first_name, last_name, created_at;
-    `;
-
-    const values = [email, hashedPassword, firstName, lastName, customerRoleId];
-    const result = await pool.query(query, values);
-
-    if (!result.rows[0]) {
+    if (!dbUser) {
       throw new Error("User creation failed");
     }
-
-    const dbUser = result.rows[0];
 
     // Generate token
     const token = generateToken({ id: dbUser.id });
@@ -68,7 +52,7 @@ const signup = async (req, res) => {
           firstName: dbUser.first_name,
           lastName: dbUser.last_name,
           createdAt: dbUser.created_at,
-          role: 'customer',
+          role: "customer",
         },
       },
     });
@@ -86,14 +70,7 @@ const signin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const result = await pool.query(`
-      SELECT u.*, r.name as role_name 
-      FROM users u 
-      JOIN roles r ON u.role_id = r.id 
-      WHERE u.email = $1
-    `, [email]);
-
-    const user = result.rows[0];
+    const user = await User.findByEmail(email);
 
     if (!user) {
       return res.status(401).json({
@@ -150,23 +127,16 @@ const refreshToken = async (req, res) => {
 
     // Verify refresh token
     const decoded = verifyRefreshToken(refreshToken);
-    
-    // Get user from database
-    const result = await pool.query(`
-      SELECT u.*, r.name as role_name 
-      FROM users u 
-      JOIN roles r ON u.role_id = r.id 
-      WHERE u.id = $1
-    `, [decoded.id]);
 
-    if (result.rows.length === 0) {
+    // Get user from database
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
       return res.status(401).json({
         success: false,
         message: "Invalid refresh token",
       });
     }
-
-    const user = result.rows[0];
 
     // Generate new tokens
     const newToken = generateToken({ id: user.id });
@@ -197,22 +167,8 @@ const refreshToken = async (req, res) => {
 
 const getProfile = async (req, res) => {
   try {
-    // Get user with role from database
-    const result = await pool.query(`
-      SELECT u.id, u.email, u.first_name, u.last_name, u.created_at, r.name as role_name
-      FROM users u 
-      JOIN roles r ON u.role_id = r.id 
-      WHERE u.id = $1
-    `, [req.user.id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    const user = result.rows[0];
+    // User is already attached to req by authenticate middleware
+    const user = req.user;
 
     return res.json({
       success: true,
@@ -223,7 +179,7 @@ const getProfile = async (req, res) => {
           firstName: user.first_name,
           lastName: user.last_name,
           createdAt: user.created_at,
-          role: user.role_name,
+          status: user.status,
         },
       },
     });

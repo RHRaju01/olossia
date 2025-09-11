@@ -1,4 +1,5 @@
 import { supabase, testSupabaseConnection } from "./supabase.js";
+import { testPostgreSQLConnection } from "./postgresql.js";
 import pg from "pg";
 import dotenv from "dotenv";
 
@@ -11,31 +12,42 @@ dotenv.config();
 const DATABASE_TYPE = process.env.DATABASE_TYPE || "supabase";
 
 // Export the appropriate database client based on configuration
-export const pool = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || "olossia_db",
-  user: process.env.DB_USER || "postgres",
-  password: process.env.DB_PASSWORD || "1234",
-});
+export let pool;
 
-// Log when database connects
-pool.on("connect", () => {
-  console.log("✅ PostgreSQL connected successfully");
-});
+// Only initialize PostgreSQL if it's being used
+if (DATABASE_TYPE === "postgresql") {
+  pool = new Pool({
+    host: process.env.DB_HOST || "localhost",
+    port: process.env.DB_PORT || 5432,
+    database: process.env.DB_NAME || "olossia_db",
+    user: process.env.DB_USER || "postgres",
+    password: process.env.DB_PASSWORD || "1234",
+  });
 
-// Log any errors
-pool.on("error", (err) => {
-  console.error("Unexpected database error:", err);
-  process.exit(-1);
-});
+  // Log when database connects
+  pool.on("connect", () => {
+    console.log("✅ PostgreSQL connected successfully");
+  });
 
-// Test the connection
-pool.query("SELECT NOW()", (err, res) => {
-  if (err) {
-    console.error("Database connection failed:", err);
-  }
-});
+  // Log any errors
+  pool.on("error", (err) => {
+    console.error("Unexpected database error:", err);
+    process.exit(-1);
+  });
+
+  // Test the connection
+  pool.query("SELECT NOW()", (err, res) => {
+    if (err) {
+      console.error("Database connection failed:", err);
+    }
+  });
+} else {
+  // For Supabase, we'll use the supabase client imported at the top
+  // Test the Supabase connection
+  testSupabaseConnection().catch((err) => {
+    console.error("Failed to initialize Supabase connection:", err);
+  });
+}
 
 // Test database connection
 export const testConnection = async () => {
@@ -73,5 +85,8 @@ process.on("SIGINT", async () => {
   }
   process.exit(0);
 });
+
+// Export the appropriate client
+export { supabase };
 
 console.log(`🗄️ Database configured for: ${DATABASE_TYPE.toUpperCase()}`);
