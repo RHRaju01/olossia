@@ -1,120 +1,98 @@
-import React, { useCallback } from "react";
-import { Button } from "../ui/button";
-import { Card, CardContent } from "../ui/card";
-import { Separator } from "../ui/separator";
-import {
-  Minus,
-  Plus,
-  X,
-  ShoppingBag,
-  ArrowRight,
-  Heart,
-  BarChart3,
-} from "lucide-react";
-import { useCart } from "../../contexts/CartContext";
-import { useWishlist } from "../../contexts/WishlistContext";
-import { useCompare } from "../../contexts/CompareContext";
-import { useNavigate } from "react-router-dom";
+import { useCallback } from 'react';
+import { Button } from '../ui/button';
+import { Card, CardContent } from '../ui/card';
+import { Separator } from '../ui/separator';
+import { Minus, Plus, X, ShoppingBag, ArrowRight, Heart, BarChart3 } from 'lucide-react';
+import { useCart } from '../../contexts/CartContext';
+import { useWishlist } from '../../contexts/WishlistContext';
+import { useCompare } from '../../contexts/CompareContext';
+import { useNavigate } from 'react-router-dom';
 
 // Memoized cart item component
 const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
   return (
-    <div className="p-6 border-b border-gray-50 last:border-b-0">
-      <div className="flex gap-4">
-        <div className="relative">
+    <div className='border-b border-gray-50 p-6 last:border-b-0'>
+      <div className='flex gap-4'>
+        <div className='relative'>
           <img
             src={
               item.image ||
               (item.images && item.images[0]) ||
-              (item.products &&
-                item.products.images &&
-                item.products.images[0]) ||
-              "/placeholder-image.jpg"
+              (item.products && item.products.images && item.products.images[0]) ||
+              '/placeholder-image.jpg'
             }
-            alt={item.name || "Product"}
-            className="w-20 h-20 object-cover rounded-xl"
-            loading="lazy"
+            alt={item.name || 'Product'}
+            className='h-20 w-20 rounded-xl object-cover'
+            loading='lazy'
           />
           {item.originalPrice && (
-            <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+            <div className='absolute -right-2 -top-2 rounded-full bg-red-500 px-2 py-1 text-xs font-bold text-white'>
               SALE
             </div>
           )}
         </div>
 
-        <div className="flex-1 space-y-2">
+        <div className='flex-1 space-y-2'>
           <div>
             {item.brand && (
-              <p className="text-xs text-purple-600 font-bold uppercase">
-                {item.brand}
-              </p>
+              <p className='text-xs font-bold uppercase text-purple-600'>{item.brand}</p>
             )}
-            <h4 className="font-semibold text-gray-900 leading-tight">
-              {item.name ||
-                (item.products && item.products.name) ||
-                "Unknown Product"}
+            <h4 className='font-semibold leading-tight text-gray-900'>
+              {item.name || (item.products && item.products.name) || 'Unknown Product'}
             </h4>
-            <p className="text-sm text-gray-500">
-              Size: {item.size || "N/A"} • Color: {item.color || "N/A"}
+            <p className='text-sm text-gray-500'>
+              Size: {item.size || 'N/A'} • Color: {item.color || 'N/A'}
             </p>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-gray-900">
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-2'>
+              <span className='font-bold text-gray-900'>
                 ${item.price || (item.products && item.products.price) || 0}
               </span>
               {item.originalPrice && (
-                <span className="text-sm text-gray-400 line-through">
-                  ${item.originalPrice}
-                </span>
+                <span className='text-sm text-gray-400 line-through'>${item.originalPrice}</span>
               )}
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2">
+            <div className='flex items-center gap-2'>
+              <div className='flex items-center gap-2'>
                 <Button
-                  variant="outline"
-                  size="icon"
+                  variant='outline'
+                  size='icon'
                   onClick={() =>
                     onUpdateQuantity(
                       item.product_id || (item.products && item.products.id),
                       item.quantity - 1
                     )
                   }
-                  className="w-8 h-8 rounded-full border-gray-200"
+                  className='h-8 w-8 rounded-full border-gray-200'
                 >
-                  <Minus className="w-3 h-3" />
+                  <Minus className='h-3 w-3' />
                 </Button>
-                <span className="w-8 text-center font-semibold">
-                  {item.quantity}
-                </span>
+                <span className='w-8 text-center font-semibold'>{item.quantity}</span>
                 <Button
-                  variant="outline"
-                  size="icon"
+                  variant='outline'
+                  size='icon'
                   onClick={() =>
                     onUpdateQuantity(
                       item.product_id || (item.products && item.products.id),
                       item.quantity + 1
                     )
                   }
-                  className="w-8 h-8 rounded-full border-gray-200"
+                  className='h-8 w-8 rounded-full border-gray-200'
                 >
-                  <Plus className="w-3 h-3" />
+                  <Plus className='h-3 w-3' />
                 </Button>
               </div>
 
               <Button
-                variant="outline"
-                size="icon"
-                onClick={() =>
-                  onRemoveItem(
-                    item.product_id || (item.products && item.products.id)
-                  )
-                }
-                className="w-8 h-8 rounded-full border-gray-200 hover:border-red-300 hover:bg-red-50"
+                variant='outline'
+                size='icon'
+                onClick={() => onRemoveItem(item.product_id || (item.products && item.products.id))}
+                className='h-8 w-8 rounded-full border-gray-200 hover:border-red-300 hover:bg-red-50'
               >
-                <X className="w-3 h-3 text-red-500" />
+                <X className='h-3 w-3 text-red-500' />
               </Button>
             </div>
           </div>
@@ -124,17 +102,10 @@ const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
   );
 });
 
-CartItem.displayName = "CartItem";
+CartItem.displayName = 'CartItem';
 
 export const CartDropdown = ({ isOpen, onClose }) => {
-  const {
-    items: cartItems,
-    subtotal,
-    shipping,
-    total,
-    updateItem,
-    removeItem,
-  } = useCart();
+  const { items: cartItems, subtotal, shipping, total, updateItem, removeItem } = useCart();
   const navigate = useNavigate();
 
   const handleUpdateQuantity = useCallback(
@@ -149,7 +120,7 @@ export const CartDropdown = ({ isOpen, onClose }) => {
   );
 
   const handleRemoveItem = useCallback(
-    async (itemId) => {
+    async itemId => {
       await removeItem(itemId);
     },
     [removeItem]
@@ -158,32 +129,32 @@ export const CartDropdown = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="absolute top-full right-0 mt-2 w-96 z-[55]">
-      <Card className="border-0 shadow-2xl rounded-2xl overflow-hidden bg-white">
-        <CardContent className="p-0">
+    <div className='absolute right-0 top-full z-[55] mt-2 w-96'>
+      <Card className='overflow-hidden rounded-2xl border-0 bg-white shadow-2xl'>
+        <CardContent className='p-0'>
           {/* Header */}
-          <div className="flex items-center justify-between p-6 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <ShoppingBag className="w-6 h-6 text-purple-600" />
-              <h3 className="font-bold text-gray-900 text-lg">Shopping Cart</h3>
-              <span className="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-1 rounded-full">
+          <div className='flex items-center justify-between border-b border-gray-100 bg-gradient-to-r from-purple-50 to-pink-50 p-6'>
+            <div className='flex items-center gap-3'>
+              <ShoppingBag className='h-6 w-6 text-purple-600' />
+              <h3 className='text-lg font-bold text-gray-900'>Shopping Cart</h3>
+              <span className='rounded-full bg-purple-100 px-2 py-1 text-xs font-bold text-purple-700'>
                 {cartItems.length}
               </span>
             </div>
             <Button
-              variant="ghost"
-              size="icon"
+              variant='ghost'
+              size='icon'
               onClick={onClose}
-              className="w-8 h-8 rounded-full hover:bg-gray-100"
+              className='h-8 w-8 rounded-full hover:bg-gray-100'
             >
-              <X className="w-4 h-4" />
+              <X className='h-4 w-4' />
             </Button>
           </div>
 
           {/* Cart Items */}
-          <div className="max-h-80 overflow-y-auto scrollbar-hide">
+          <div className='scrollbar-hide max-h-80 overflow-y-auto'>
             {cartItems.length > 0 ? (
-              cartItems.map((item) => (
+              cartItems.map(item => (
                 <CartItem
                   key={item.id}
                   item={item}
@@ -192,20 +163,17 @@ export const CartDropdown = ({ isOpen, onClose }) => {
                 />
               ))
             ) : (
-              <div className="p-12 text-center">
-                <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                  <ShoppingBag className="w-10 h-10 text-gray-400" />
+              <div className='p-12 text-center'>
+                <div className='mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gray-100'>
+                  <ShoppingBag className='h-10 w-10 text-gray-400' />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Your cart is empty
-                </h3>
-                <p className="text-gray-500 mb-6 max-w-sm mx-auto">
-                  Discover amazing products and add them to your cart to get
-                  started!
+                <h3 className='mb-2 text-lg font-semibold text-gray-900'>Your cart is empty</h3>
+                <p className='mx-auto mb-6 max-w-sm text-gray-500'>
+                  Discover amazing products and add them to your cart to get started!
                 </p>
                 <Button
                   onClick={onClose}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-6 py-2 rounded-xl"
+                  className='rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-2 font-semibold text-white hover:from-purple-700 hover:to-pink-700'
                 >
                   Start Shopping
                 </Button>
@@ -215,43 +183,43 @@ export const CartDropdown = ({ isOpen, onClose }) => {
 
           {/* Summary - only show when cart has items */}
           {cartItems.length > 0 && (
-            <div className="p-6 bg-gray-50 space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="font-semibold">${subtotal}</span>
+            <div className='space-y-4 bg-gray-50 p-6'>
+              <div className='space-y-2'>
+                <div className='flex justify-between text-sm'>
+                  <span className='text-gray-600'>Subtotal</span>
+                  <span className='font-semibold'>${subtotal}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Shipping</span>
-                  <span className="font-semibold text-green-600">
-                    {shipping === 0 ? "Free" : `$${shipping}`}
+                <div className='flex justify-between text-sm'>
+                  <span className='text-gray-600'>Shipping</span>
+                  <span className='font-semibold text-green-600'>
+                    {shipping === 0 ? 'Free' : `$${shipping}`}
                   </span>
                 </div>
                 <Separator />
-                <div className="flex justify-between text-lg font-bold">
+                <div className='flex justify-between text-lg font-bold'>
                   <span>Total</span>
                   <span>${total}</span>
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className='space-y-3'>
                 <Button
                   onClick={() => {
-                    navigate("/checkout");
+                    navigate('/checkout');
                     onClose();
                   }}
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 rounded-xl"
+                  className='w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-3 font-bold text-white hover:from-purple-700 hover:to-pink-700'
                 >
                   Checkout
-                  <ArrowRight className="ml-2 w-4 h-4" />
+                  <ArrowRight className='ml-2 h-4 w-4' />
                 </Button>
                 <Button
-                  variant="outline"
+                  variant='outline'
                   onClick={() => {
-                    navigate("/cart");
+                    navigate('/cart');
                     onClose();
                   }}
-                  className="w-full rounded-xl py-3"
+                  className='w-full rounded-xl py-3'
                 >
                   View Full Cart
                 </Button>

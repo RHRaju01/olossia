@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { HeaderSection } from '../components/sections/HeaderSection';
 import { FooterSection } from '../components/sections/FooterSection';
@@ -6,16 +6,14 @@ import { AuthOverlay } from '../components/AuthOverlay/AuthOverlay';
 import { useAuth } from '../contexts/AuthContext';
 
 // Memoized header component
-const MemoizedHeader = React.memo(({ onAuthModalOpen }) => (
+const MemoizedHeader = memo(({ onAuthModalOpen }) => (
   <HeaderSection onAuthModalOpen={onAuthModalOpen} />
 ));
 
 MemoizedHeader.displayName = 'MemoizedHeader';
 
 // Memoized footer component
-const MemoizedFooter = React.memo(() => (
-  <FooterSection />
-));
+const MemoizedFooter = memo(() => <FooterSection />);
 
 MemoizedFooter.displayName = 'MemoizedFooter';
 
@@ -57,16 +55,13 @@ export const MainLayout = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 relative">
+    <div className='relative min-h-screen bg-gray-50'>
       <MemoizedHeader onAuthModalOpen={handleAuthOverlayOpen} />
       <main>
         <Outlet />
       </main>
       <MemoizedFooter />
-      <AuthOverlay 
-        isOpen={isAuthOverlayOpen} 
-        onClose={handleAuthOverlayClose} 
-      />
+      <AuthOverlay isOpen={isAuthOverlayOpen} onClose={handleAuthOverlayClose} />
     </div>
   );
 };

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { CheckCircle, Package, Truck, Mail, ArrowRight, Download } from 'lucide-react';
@@ -6,132 +5,143 @@ import { useNavigateWithScroll } from '../utils/navigation';
 
 export const OrderSuccessPage = () => {
   const navigate = useNavigateWithScroll();
-  
+
   // Mock order data
   const orderData = {
     orderNumber: 'ORD-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-    total: 258.00,
+    total: 258.0,
     estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     }),
-    email: 'customer@example.com'
+    email: 'customer@example.com',
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Card className="border-0 shadow-2xl rounded-3xl overflow-hidden bg-white">
-          <CardContent className="p-0">
+    <div className='flex min-h-screen items-center justify-center bg-gray-50 py-12'>
+      <div className='mx-auto max-w-2xl px-4 sm:px-6 lg:px-8'>
+        <Card className='overflow-hidden rounded-3xl border-0 bg-white shadow-2xl'>
+          <CardContent className='p-0'>
             {/* Success Header */}
-            <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-center py-12 px-8">
-              <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="w-12 h-12 text-white" />
+            <div className='bg-gradient-to-r from-green-500 to-emerald-500 px-8 py-12 text-center text-white'>
+              <div className='mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-white/20'>
+                <CheckCircle className='h-12 w-12 text-white' />
               </div>
-              <h1 className="text-3xl font-black mb-4">Order Confirmed!</h1>
-              <p className="text-green-100 text-lg">
+              <h1 className='mb-4 text-3xl font-black'>Order Confirmed!</h1>
+              <p className='text-lg text-green-100'>
                 Thank you for your purchase. Your order has been successfully placed.
               </p>
             </div>
 
             {/* Order Details */}
-            <div className="p-8 space-y-8">
-              <div className="text-center">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Order #{orderData.orderNumber}</h2>
-                <p className="text-gray-600">
-                  A confirmation email has been sent to <span className="font-semibold">{orderData.email}</span>
+            <div className='space-y-8 p-8'>
+              <div className='text-center'>
+                <h2 className='mb-2 text-2xl font-bold text-gray-900'>
+                  Order #{orderData.orderNumber}
+                </h2>
+                <p className='text-gray-600'>
+                  A confirmation email has been sent to{' '}
+                  <span className='font-semibold'>{orderData.email}</span>
                 </p>
               </div>
 
               {/* Order Summary */}
-              <div className="bg-gray-50 rounded-2xl p-6">
-                <h3 className="font-bold text-gray-900 mb-4">Order Summary</h3>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Total Amount</span>
-                  <span className="text-2xl font-bold text-gray-900">${orderData.total}</span>
+              <div className='rounded-2xl bg-gray-50 p-6'>
+                <h3 className='mb-4 font-bold text-gray-900'>Order Summary</h3>
+                <div className='flex items-center justify-between'>
+                  <span className='text-gray-600'>Total Amount</span>
+                  <span className='text-2xl font-bold text-gray-900'>${orderData.total}</span>
                 </div>
               </div>
 
               {/* Next Steps */}
-              <div className="space-y-4">
-                <h3 className="font-bold text-gray-900 text-lg">What happens next?</h3>
-                
-                <div className="space-y-4">
-                  <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-xl">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Package className="w-5 h-5 text-blue-600" />
+              <div className='space-y-4'>
+                <h3 className='text-lg font-bold text-gray-900'>What happens next?</h3>
+
+                <div className='space-y-4'>
+                  <div className='flex items-start gap-4 rounded-xl bg-blue-50 p-4'>
+                    <div className='flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-100'>
+                      <Package className='h-5 w-5 text-blue-600' />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900">Order Processing</h4>
-                      <p className="text-sm text-gray-600">We're preparing your items for shipment. You'll receive an email when your order ships.</p>
+                      <h4 className='font-semibold text-gray-900'>Order Processing</h4>
+                      <p className='text-sm text-gray-600'>
+                        We're preparing your items for shipment. You'll receive an email when your
+                        order ships.
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-4 p-4 bg-purple-50 rounded-xl">
-                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Truck className="w-5 h-5 text-purple-600" />
+                  <div className='flex items-start gap-4 rounded-xl bg-purple-50 p-4'>
+                    <div className='flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-purple-100'>
+                      <Truck className='h-5 w-5 text-purple-600' />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900">Estimated Delivery</h4>
-                      <p className="text-sm text-gray-600">Your order will arrive by <span className="font-semibold">{orderData.estimatedDelivery}</span></p>
+                      <h4 className='font-semibold text-gray-900'>Estimated Delivery</h4>
+                      <p className='text-sm text-gray-600'>
+                        Your order will arrive by{' '}
+                        <span className='font-semibold'>{orderData.estimatedDelivery}</span>
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-4 p-4 bg-green-50 rounded-xl">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Mail className="w-5 h-5 text-green-600" />
+                  <div className='flex items-start gap-4 rounded-xl bg-green-50 p-4'>
+                    <div className='flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-green-100'>
+                      <Mail className='h-5 w-5 text-green-600' />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900">Order Updates</h4>
-                      <p className="text-sm text-gray-600">We'll keep you updated via email and SMS about your order status.</p>
+                      <h4 className='font-semibold text-gray-900'>Order Updates</h4>
+                      <p className='text-sm text-gray-600'>
+                        We'll keep you updated via email and SMS about your order status.
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className='space-y-4'>
+                <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
                   <Button
-                    variant="outline"
-                    className="rounded-xl py-3 font-semibold"
+                    variant='outline'
+                    className='rounded-xl py-3 font-semibold'
                     onClick={() => window.print()}
                   >
-                    <Download className="w-4 h-4 mr-2" />
+                    <Download className='mr-2 h-4 w-4' />
                     Download Receipt
                   </Button>
                   <Button
-                    variant="outline"
-                    className="rounded-xl py-3 font-semibold"
+                    variant='outline'
+                    className='rounded-xl py-3 font-semibold'
                     onClick={() => navigate('/profile/orders')}
                   >
-                    <Package className="w-4 h-4 mr-2" />
+                    <Package className='mr-2 h-4 w-4' />
                     Track Order
                   </Button>
                 </div>
 
                 <Button
                   onClick={() => navigate('/')}
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-4 rounded-xl"
+                  className='w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-4 font-bold text-white hover:from-purple-700 hover:to-pink-700'
                 >
                   Continue Shopping
-                  <ArrowRight className="w-5 h-5 ml-2" />
+                  <ArrowRight className='ml-2 h-5 w-5' />
                 </Button>
               </div>
 
               {/* Support */}
-              <div className="text-center pt-6 border-t border-gray-100">
-                <p className="text-gray-600 mb-4">Need help with your order?</p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Button variant="ghost" className="text-purple-600 hover:text-purple-700">
+              <div className='border-t border-gray-100 pt-6 text-center'>
+                <p className='mb-4 text-gray-600'>Need help with your order?</p>
+                <div className='flex flex-col justify-center gap-4 sm:flex-row'>
+                  <Button variant='ghost' className='text-purple-600 hover:text-purple-700'>
                     Contact Support
                   </Button>
-                  <Button variant="ghost" className="text-purple-600 hover:text-purple-700">
+                  <Button variant='ghost' className='text-purple-600 hover:text-purple-700'>
                     Live Chat
                   </Button>
-                  <Button variant="ghost" className="text-purple-600 hover:text-purple-700">
+                  <Button variant='ghost' className='text-purple-600 hover:text-purple-700'>
                     FAQ
                   </Button>
                 </div>

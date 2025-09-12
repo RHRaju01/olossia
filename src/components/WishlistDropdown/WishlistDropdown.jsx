@@ -1,98 +1,80 @@
-import React, { useCallback } from "react";
-import { Button } from "../ui/button";
-import { Card, CardContent } from "../ui/card";
-import { Heart, ShoppingBag, X, Star, BarChart3 } from "lucide-react";
-import { useWishlist } from "../../contexts/WishlistContext";
-import { useCompare } from "../../contexts/CompareContext";
-import { useCart } from "../../contexts/CartContext";
-import { useNavigate } from "react-router-dom";
+import { useCallback } from 'react';
+import { Button } from '../ui/button';
+import { Card, CardContent } from '../ui/card';
+import { Heart, ShoppingBag, X, Star, BarChart3 } from 'lucide-react';
+import { useWishlist } from '../../contexts/WishlistContext';
+import { useCompare } from '../../contexts/CompareContext';
+import { useCart } from '../../contexts/CartContext';
+import { useNavigate } from 'react-router-dom';
 
 // Memoized wishlist item component
 const WishlistItem = React.memo(
-  ({
-    item,
-    onRemoveFromWishlist,
-    onAddToCart,
-    onAddToCompare,
-    isInCompare,
-  }) => {
+  ({ item, onRemoveFromWishlist, onAddToCart, onAddToCompare, isInCompare }) => {
     return (
-      <div className="p-6 border-b border-gray-50 last:border-b-0">
-        <div className="flex gap-4">
-          <div className="relative">
+      <div className='border-b border-gray-50 p-6 last:border-b-0'>
+        <div className='flex gap-4'>
+          <div className='relative'>
             <img
               src={
                 item.image ||
                 (item.images && item.images[0]) ||
-                (item.products &&
-                  item.products.images &&
-                  item.products.images[0]) ||
-                "/placeholder-image.jpg"
+                (item.products && item.products.images && item.products.images[0]) ||
+                '/placeholder-image.jpg'
               }
-              alt={item.name || "Product"}
-              className="w-20 h-20 object-cover rounded-xl"
-              loading="lazy"
+              alt={item.name || 'Product'}
+              className='h-20 w-20 rounded-xl object-cover'
+              loading='lazy'
             />
             {item.originalPrice && (
-              <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+              <div className='absolute -right-2 -top-2 rounded-full bg-red-500 px-2 py-1 text-xs font-bold text-white'>
                 SALE
               </div>
             )}
             {!item.inStock && (
-              <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
-                <span className="text-white text-xs font-bold">
-                  OUT OF STOCK
-                </span>
+              <div className='absolute inset-0 flex items-center justify-center rounded-xl bg-black/50'>
+                <span className='text-xs font-bold text-white'>OUT OF STOCK</span>
               </div>
             )}
           </div>
 
-          <div className="flex-1 space-y-2">
+          <div className='flex-1 space-y-2'>
             <div>
               {item.brand && (
-                <p className="text-xs text-red-600 font-bold uppercase">
-                  {item.brand}
-                </p>
+                <p className='text-xs font-bold uppercase text-red-600'>{item.brand}</p>
               )}
-              <h4 className="font-semibold text-gray-900 leading-tight">
-                {item.name ||
-                  (item.products && item.products.name) ||
-                  "Unknown Product"}
+              <h4 className='font-semibold leading-tight text-gray-900'>
+                {item.name || (item.products && item.products.name) || 'Unknown Product'}
               </h4>
             </div>
 
             {/* Rating */}
             {(item.rating || item.reviews) && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">
+              <div className='flex items-center gap-2'>
+                <div className='flex items-center gap-1'>
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
-                      className={`w-3 h-3 ${
+                      className={`h-3 w-3 ${
                         i < Math.floor(item.rating || 0)
-                          ? "fill-yellow-400 text-yellow-400"
-                          : "text-gray-200"
+                          ? 'fill-yellow-400 text-yellow-400'
+                          : 'text-gray-200'
                       }`}
                     />
                   ))}
                 </div>
-                {item.reviews && (
-                  <span className="text-xs text-gray-500">
-                    ({item.reviews})
-                  </span>
-                )}
+                {item.reviews && <span className='text-xs text-gray-500'>({item.reviews})</span>}
               </div>
             )}
 
             {/* Colors */}
             {item.colors && item.colors.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">Colors:</span>
-                <div className="flex gap-1">
+              <div className='flex items-center gap-2'>
+                <span className='text-xs text-gray-500'>Colors:</span>
+                <div className='flex gap-1'>
                   {item.colors.map((color, index) => (
                     <div
                       key={index}
-                      className="w-4 h-4 rounded-full border border-gray-200"
+                      className='h-4 w-4 rounded-full border border-gray-200'
                       style={{ backgroundColor: color }}
                     />
                   ))}
@@ -100,51 +82,47 @@ const WishlistItem = React.memo(
               </div>
             )}
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-gray-900">
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-2'>
+                <span className='font-bold text-gray-900'>
                   ${item.price || (item.products && item.products.price) || 0}
                 </span>
                 {item.originalPrice && (
-                  <span className="text-sm text-gray-400 line-through">
-                    ${item.originalPrice}
-                  </span>
+                  <span className='text-sm text-gray-400 line-through'>${item.originalPrice}</span>
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className='flex items-center gap-2'>
                 <Button
-                  variant="outline"
-                  size="icon"
+                  variant='outline'
+                  size='icon'
                   onClick={() =>
-                    onRemoveFromWishlist(
-                      item.product_id || (item.products && item.products.id)
-                    )
+                    onRemoveFromWishlist(item.product_id || (item.products && item.products.id))
                   }
-                  className="w-8 h-8 rounded-full border-gray-200 hover:border-red-300 hover:bg-red-50"
+                  className='h-8 w-8 rounded-full border-gray-200 hover:border-red-300 hover:bg-red-50'
                 >
-                  <X className="w-3 h-3 text-red-500" />
+                  <X className='h-3 w-3 text-red-500' />
                 </Button>
                 <Button
-                  variant="outline"
-                  size="icon"
+                  variant='outline'
+                  size='icon'
                   onClick={() => onAddToCompare(item)}
-                  className={`w-8 h-8 rounded-full border-gray-200 ${
+                  className={`h-8 w-8 rounded-full border-gray-200 ${
                     isInCompare(item.product_id)
-                      ? "bg-blue-50 border-blue-300 text-blue-600"
-                      : "hover:border-blue-300 hover:bg-blue-50"
+                      ? 'border-blue-300 bg-blue-50 text-blue-600'
+                      : 'hover:border-blue-300 hover:bg-blue-50'
                   }`}
                 >
-                  <BarChart3 className="w-3 h-3 text-blue-600" />
+                  <BarChart3 className='h-3 w-3 text-blue-600' />
                 </Button>
                 <Button
-                  variant="outline"
-                  size="icon"
+                  variant='outline'
+                  size='icon'
                   onClick={() => onAddToCart(item)}
-                  className="w-8 h-8 rounded-full border-gray-200 hover:border-purple-300 hover:bg-purple-50"
+                  className='h-8 w-8 rounded-full border-gray-200 hover:border-purple-300 hover:bg-purple-50'
                   disabled={!item.inStock}
                 >
-                  <ShoppingBag className="w-3 h-3 text-purple-600" />
+                  <ShoppingBag className='h-3 w-3 text-purple-600' />
                 </Button>
               </div>
             </div>
@@ -155,7 +133,7 @@ const WishlistItem = React.memo(
   }
 );
 
-WishlistItem.displayName = "WishlistItem";
+WishlistItem.displayName = 'WishlistItem';
 
 export const WishlistDropdown = ({ isOpen, onClose }) => {
   const { items: wishlistItems, removeItem } = useWishlist();
@@ -164,14 +142,14 @@ export const WishlistDropdown = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
 
   const handleRemoveFromWishlist = useCallback(
-    async (itemId) => {
+    async itemId => {
       await removeItem(itemId);
     },
     [removeItem]
   );
 
   const handleAddToCart = useCallback(
-    async (item) => {
+    async item => {
       if (!item.inStock) return;
 
       const product = {
@@ -193,7 +171,7 @@ export const WishlistDropdown = ({ isOpen, onClose }) => {
   );
 
   const handleAddToCompare = useCallback(
-    async (item) => {
+    async item => {
       const product = {
         id: item.product_id,
         name: item.name,
@@ -215,35 +193,35 @@ export const WishlistDropdown = ({ isOpen, onClose }) => {
 
   return (
     <div
-      className="absolute top-full right-0 mt-2 w-96 z-[55]"
+      className='absolute right-0 top-full z-[55] mt-2 w-96'
       onMouseEnter={() => {}}
       onMouseLeave={() => {}}
     >
-      <Card className="border-0 shadow-2xl rounded-2xl overflow-hidden bg-white">
-        <CardContent className="p-0">
+      <Card className='overflow-hidden rounded-2xl border-0 bg-white shadow-2xl'>
+        <CardContent className='p-0'>
           {/* Header */}
-          <div className="flex items-center justify-between p-6 bg-gradient-to-r from-red-50 to-pink-50 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <Heart className="w-6 h-6 text-red-500" />
-              <h3 className="font-bold text-gray-900 text-lg">Wishlist</h3>
-              <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded-full">
+          <div className='flex items-center justify-between border-b border-gray-100 bg-gradient-to-r from-red-50 to-pink-50 p-6'>
+            <div className='flex items-center gap-3'>
+              <Heart className='h-6 w-6 text-red-500' />
+              <h3 className='text-lg font-bold text-gray-900'>Wishlist</h3>
+              <span className='rounded-full bg-red-100 px-2 py-1 text-xs font-bold text-red-700'>
                 {wishlistItems.length}
               </span>
             </div>
             <Button
-              variant="ghost"
-              size="icon"
+              variant='ghost'
+              size='icon'
               onClick={onClose}
-              className="w-8 h-8 rounded-full hover:bg-gray-100"
+              className='h-8 w-8 rounded-full hover:bg-gray-100'
             >
-              <X className="w-4 h-4" />
+              <X className='h-4 w-4' />
             </Button>
           </div>
 
           {/* Wishlist Items */}
-          <div className="max-h-80 overflow-y-auto scrollbar-hide">
+          <div className='scrollbar-hide max-h-80 overflow-y-auto'>
             {wishlistItems.length > 0 ? (
-              wishlistItems.map((item) => (
+              wishlistItems.map(item => (
                 <WishlistItem
                   key={item.id}
                   item={item}
@@ -254,19 +232,17 @@ export const WishlistDropdown = ({ isOpen, onClose }) => {
                 />
               ))
             ) : (
-              <div className="p-12 text-center">
-                <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                  <Heart className="w-10 h-10 text-gray-400" />
+              <div className='p-12 text-center'>
+                <div className='mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gray-100'>
+                  <Heart className='h-10 w-10 text-gray-400' />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Your wishlist is empty
-                </h3>
-                <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+                <h3 className='mb-2 text-lg font-semibold text-gray-900'>Your wishlist is empty</h3>
+                <p className='mx-auto mb-6 max-w-sm text-gray-500'>
                   Save items you love by clicking the heart icon on any product!
                 </p>
                 <Button
                   onClick={onClose}
-                  className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-semibold px-6 py-2 rounded-xl"
+                  className='rounded-xl bg-gradient-to-r from-red-500 to-pink-500 px-6 py-2 font-semibold text-white hover:from-red-600 hover:to-pink-600'
                 >
                   Discover Products
                 </Button>
@@ -276,17 +252,17 @@ export const WishlistDropdown = ({ isOpen, onClose }) => {
 
           {/* Footer - only show when wishlist has items */}
           {wishlistItems.length > 0 && (
-            <div className="p-6 bg-gray-50 space-y-3">
+            <div className='space-y-3 bg-gray-50 p-6'>
               <Button
                 onClick={() => {
-                  navigate("/wishlist");
+                  navigate('/wishlist');
                   onClose();
                 }}
-                className="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-bold py-3 rounded-xl"
+                className='w-full rounded-xl bg-gradient-to-r from-red-500 to-pink-500 py-3 font-bold text-white hover:from-red-600 hover:to-pink-600'
               >
                 View Full Wishlist
               </Button>
-              <p className="text-xs text-gray-500 text-center">
+              <p className='text-center text-xs text-gray-500'>
                 Items in your wishlist are saved for 30 days
               </p>
             </div>

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Separator } from '../components/ui/separator';
@@ -19,7 +18,7 @@ export const ComparePage = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  const handleRemoveFromCompare = async (itemId) => {
+  const handleRemoveFromCompare = async itemId => {
     await removeItem(itemId);
   };
 
@@ -29,20 +28,20 @@ export const ComparePage = () => {
     }
   };
 
-  const handleAddToCart = async (item) => {
+  const handleAddToCart = async item => {
     const product = {
       id: item.product_id,
       name: item.name,
       brand: item.brand,
       price: item.price,
       originalPrice: item.originalPrice,
-      image: item.image
+      image: item.image,
     };
-    
+
     await addToCart(product);
   };
 
-  const handleAddToWishlist = async (item) => {
+  const handleAddToWishlist = async item => {
     const product = {
       id: item.product_id,
       name: item.name,
@@ -52,13 +51,13 @@ export const ComparePage = () => {
       image: item.image,
       rating: item.rating,
       reviews: item.reviews,
-      colors: item.colors
+      colors: item.colors,
     };
-    
+
     await addToWishlist(product);
   };
 
-  const handleViewProduct = (productId) => {
+  const handleViewProduct = productId => {
     navigate(`/product/${productId}`);
   };
 
@@ -69,22 +68,22 @@ export const ComparePage = () => {
     { key: 'reviews', label: 'Total Reviews', type: 'number' },
     { key: 'colors', label: 'Available Colors', type: 'colors' },
     { key: 'features', label: 'Key Features', type: 'features' },
-    { key: 'specifications', label: 'Specifications', type: 'specifications' }
+    { key: 'specifications', label: 'Specifications', type: 'specifications' },
   ];
 
   const renderAttributeValue = (item, attribute) => {
     switch (attribute.type) {
       case 'price':
         return (
-          <div className="space-y-1 text-center">
-            <div className="flex items-center justify-center gap-2">
-              <span className="text-2xl font-bold text-gray-900">${item.price}</span>
+          <div className='space-y-1 text-center'>
+            <div className='flex items-center justify-center gap-2'>
+              <span className='text-2xl font-bold text-gray-900'>${item.price}</span>
               {item.originalPrice && (
-                <span className="text-lg text-gray-400 line-through">${item.originalPrice}</span>
+                <span className='text-lg text-gray-400 line-through'>${item.originalPrice}</span>
               )}
             </div>
             {item.originalPrice && (
-              <span className="text-sm font-bold text-green-600">
+              <span className='text-sm font-bold text-green-600'>
                 Save ${item.originalPrice - item.price}
               </span>
             )}
@@ -92,39 +91,41 @@ export const ComparePage = () => {
         );
       case 'rating':
         return (
-          <div className="space-y-2 text-center">
-            <div className="flex items-center justify-center gap-1">
+          <div className='space-y-2 text-center'>
+            <div className='flex items-center justify-center gap-1'>
               {[...Array(5)].map((_, i) => (
-                <Star 
-                  key={i} 
-                  className={`w-4 h-4 ${i < Math.floor(item.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}`} 
+                <Star
+                  key={i}
+                  className={`h-4 w-4 ${i < Math.floor(item.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}`}
                 />
               ))}
             </div>
-            <p className="text-sm text-gray-600 font-semibold">{item.rating} out of 5</p>
+            <p className='text-sm font-semibold text-gray-600'>{item.rating} out of 5</p>
           </div>
         );
       case 'number':
         return (
-          <div className="text-center">
-            <span className="text-xl font-bold text-gray-900">{item[attribute.key].toLocaleString()}</span>
-            <p className="text-sm text-gray-600">reviews</p>
+          <div className='text-center'>
+            <span className='text-xl font-bold text-gray-900'>
+              {item[attribute.key].toLocaleString()}
+            </span>
+            <p className='text-sm text-gray-600'>reviews</p>
           </div>
         );
       case 'colors':
         return (
-          <div className="space-y-2">
-            <div className="flex gap-1 flex-wrap justify-center">
+          <div className='space-y-2'>
+            <div className='flex flex-wrap justify-center gap-1'>
               {item.colors.slice(0, 6).map((color, index) => (
                 <div
                   key={index}
-                  className="w-6 h-6 rounded-full border border-gray-200"
+                  className='h-6 w-6 rounded-full border border-gray-200'
                   style={{ backgroundColor: color }}
                   title={`Color ${index + 1}`}
                 />
               ))}
             </div>
-            <p className="text-sm text-gray-600 text-center">
+            <p className='text-center text-sm text-gray-600'>
               {item.colors.length} color{item.colors.length !== 1 ? 's' : ''} available
               {item.colors.length > 6 && ` (+${item.colors.length - 6} more)`}
             </p>
@@ -132,34 +133,40 @@ export const ComparePage = () => {
         );
       case 'features':
         return (
-          <ul className="space-y-1">
+          <ul className='space-y-1'>
             {item.features.slice(0, 4).map((feature, index) => (
-              <li key={index} className="flex items-start gap-2 text-sm">
-                <Check className="w-3 h-3 text-green-500 flex-shrink-0 mt-0.5" />
-                <span className="text-gray-700">{feature}</span>
+              <li key={index} className='flex items-start gap-2 text-sm'>
+                <Check className='mt-0.5 h-3 w-3 flex-shrink-0 text-green-500' />
+                <span className='text-gray-700'>{feature}</span>
               </li>
             ))}
             {item.features.length > 4 && (
-              <li className="text-sm text-gray-500 ml-5">+{item.features.length - 4} more features</li>
+              <li className='ml-5 text-sm text-gray-500'>
+                +{item.features.length - 4} more features
+              </li>
             )}
           </ul>
         );
       case 'specifications':
         return (
-          <div className="space-y-2">
-            {Object.entries(item.specifications).slice(0, 3).map(([key, value]) => (
-              <div key={key} className="text-sm">
-                <span className="font-medium text-gray-700">{key}:</span>
-                <span className="text-gray-600 ml-1">{value}</span>
-              </div>
-            ))}
+          <div className='space-y-2'>
+            {Object.entries(item.specifications)
+              .slice(0, 3)
+              .map(([key, value]) => (
+                <div key={key} className='text-sm'>
+                  <span className='font-medium text-gray-700'>{key}:</span>
+                  <span className='ml-1 text-gray-600'>{value}</span>
+                </div>
+              ))}
             {Object.keys(item.specifications).length > 3 && (
-              <p className="text-sm text-gray-500">+{Object.keys(item.specifications).length - 3} more specs</p>
+              <p className='text-sm text-gray-500'>
+                +{Object.keys(item.specifications).length - 3} more specs
+              </p>
             )}
           </div>
         );
       default:
-        return <span className="text-gray-700">{item[attribute.key]}</span>;
+        return <span className='text-gray-700'>{item[attribute.key]}</span>;
     }
   };
 
@@ -175,100 +182,112 @@ export const ComparePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className='min-h-screen bg-gray-50'>
+      <div className='mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8'>
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
+        <div className='mb-8 flex items-center justify-between'>
+          <div className='flex items-center gap-4'>
             <Button
-              variant="ghost"
-              size="icon"
+              variant='ghost'
+              size='icon'
               onClick={() => navigate(-1)}
-              className="rounded-full hover:bg-gray-100"
+              className='rounded-full hover:bg-gray-100'
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className='h-5 w-5' />
             </Button>
             <div>
-              <h1 className="text-3xl font-black text-gray-900 flex items-center gap-3">
-                <BarChart3 className="w-8 h-8 text-blue-600" />
+              <h1 className='flex items-center gap-3 text-3xl font-black text-gray-900'>
+                <BarChart3 className='h-8 w-8 text-blue-600' />
                 Product Comparison
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className='mt-1 text-gray-600'>
                 Comparing {compareItems.length} product{compareItems.length !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
 
           <Button
-            variant="outline"
+            variant='outline'
             onClick={handleClearCompare}
-            className="rounded-xl hover:bg-red-50 hover:border-red-200 hover:text-red-600"
+            className='rounded-xl hover:border-red-200 hover:bg-red-50 hover:text-red-600'
           >
             Clear All
           </Button>
         </div>
 
         {/* Comparison Table */}
-        <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
-          <CardContent className="p-0">
+        <Card className='overflow-hidden rounded-2xl border-0 shadow-lg'>
+          <CardContent className='p-0'>
             {/* Product Headers */}
-            <div className={`grid grid-cols-1 gap-0 border-b border-gray-100 ${
-              compareItems.length === 1 ? 'lg:grid-cols-2' :
-              compareItems.length === 2 ? 'lg:grid-cols-3' :
-              compareItems.length === 3 ? 'lg:grid-cols-4' :
-              'lg:grid-cols-5'
-            }`}>
-              <div className="lg:col-span-1 p-6 bg-gray-50 border-r border-gray-100">
-                <h3 className="font-bold text-gray-900 text-lg">Products</h3>
-                <p className="text-sm text-gray-600 mt-1">Comparing {compareItems.length} item{compareItems.length !== 1 ? 's' : ''}</p>
+            <div
+              className={`grid grid-cols-1 gap-0 border-b border-gray-100 ${
+                compareItems.length === 1
+                  ? 'lg:grid-cols-2'
+                  : compareItems.length === 2
+                    ? 'lg:grid-cols-3'
+                    : compareItems.length === 3
+                      ? 'lg:grid-cols-4'
+                      : 'lg:grid-cols-5'
+              }`}
+            >
+              <div className='border-r border-gray-100 bg-gray-50 p-6 lg:col-span-1'>
+                <h3 className='text-lg font-bold text-gray-900'>Products</h3>
+                <p className='mt-1 text-sm text-gray-600'>
+                  Comparing {compareItems.length} item{compareItems.length !== 1 ? 's' : ''}
+                </p>
               </div>
-              
-              {compareItems.map((item) => (
-                <div key={item.id} className="p-6 text-center border-r border-gray-100 last:border-r-0">
-                  <div className="relative mb-4">
+
+              {compareItems.map(item => (
+                <div
+                  key={item.id}
+                  className='border-r border-gray-100 p-6 text-center last:border-r-0'
+                >
+                  <div className='relative mb-4'>
                     <img
                       src={item.image}
                       alt={item.name}
-                      className="w-24 h-24 object-cover rounded-xl mx-auto"
+                      className='mx-auto h-24 w-24 rounded-xl object-cover'
                     />
                     <Button
-                      variant="outline"
-                      size="icon"
+                      variant='outline'
+                      size='icon'
                       onClick={() => handleRemoveFromCompare(item.id)}
-                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-white shadow-lg hover:bg-red-50 hover:border-red-200"
+                      className='absolute -right-2 -top-2 h-6 w-6 rounded-full bg-white shadow-lg hover:border-red-200 hover:bg-red-50'
                     >
-                      <X className="w-3 h-3 text-red-500" />
+                      <X className='h-3 w-3 text-red-500' />
                     </Button>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-xs text-blue-600 font-bold uppercase">{item.brand}</p>
-                    <h4 className="font-semibold text-gray-900 leading-tight">{item.name}</h4>
-                    <div className="flex items-center gap-2 justify-center">
+                  <div className='space-y-2'>
+                    <p className='text-xs font-bold uppercase text-blue-600'>{item.brand}</p>
+                    <h4 className='font-semibold leading-tight text-gray-900'>{item.name}</h4>
+                    <div className='flex items-center justify-center gap-2'>
                       <Button
-                        variant="outline"
-                        size="icon"
+                        variant='outline'
+                        size='icon'
                         onClick={() => handleAddToWishlist(item)}
-                        className={`w-8 h-8 rounded-full ${
-                          isInWishlist(item.product_id) 
-                            ? 'text-red-500 border-red-200 bg-red-50' 
-                            : 'hover:text-red-500 hover:border-red-200'
+                        className={`h-8 w-8 rounded-full ${
+                          isInWishlist(item.product_id)
+                            ? 'border-red-200 bg-red-50 text-red-500'
+                            : 'hover:border-red-200 hover:text-red-500'
                         }`}
                       >
-                        <Heart className={`w-3 h-3 ${isInWishlist(item.product_id) ? 'fill-current' : ''}`} />
+                        <Heart
+                          className={`h-3 w-3 ${isInWishlist(item.product_id) ? 'fill-current' : ''}`}
+                        />
                       </Button>
                       <Button
-                        variant="outline"
-                        size="icon"
+                        variant='outline'
+                        size='icon'
                         onClick={() => handleViewProduct(item.product_id)}
-                        className="w-8 h-8 rounded-full hover:text-blue-600 hover:border-blue-200"
+                        className='h-8 w-8 rounded-full hover:border-blue-200 hover:text-blue-600'
                       >
-                        <Eye className="w-3 h-3" />
+                        <Eye className='h-3 w-3' />
                       </Button>
                       <Button
                         onClick={() => handleAddToCart(item)}
-                        className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-semibold px-4 py-1 rounded-lg text-sm"
+                        className='rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 px-4 py-1 text-sm font-semibold text-white hover:from-blue-600 hover:to-indigo-600'
                       >
-                        <ShoppingBag className="w-3 h-3 mr-1" />
+                        <ShoppingBag className='mr-1 h-3 w-3' />
                         Add
                       </Button>
                     </div>
@@ -278,20 +297,26 @@ export const ComparePage = () => {
             </div>
 
             {/* Comparison Attributes */}
-            <div className="divide-y divide-gray-100">
-              {comparisonAttributes.map((attribute) => (
-                <div key={attribute.key} className={`grid grid-cols-1 gap-0 ${
-                  compareItems.length === 1 ? 'lg:grid-cols-2' :
-                  compareItems.length === 2 ? 'lg:grid-cols-3' :
-                  compareItems.length === 3 ? 'lg:grid-cols-4' :
-                  'lg:grid-cols-5'
-                }`}>
-                  <div className="lg:col-span-1 p-6 bg-gray-50 border-r border-gray-100">
-                    <h4 className="font-semibold text-gray-900">{attribute.label}</h4>
+            <div className='divide-y divide-gray-100'>
+              {comparisonAttributes.map(attribute => (
+                <div
+                  key={attribute.key}
+                  className={`grid grid-cols-1 gap-0 ${
+                    compareItems.length === 1
+                      ? 'lg:grid-cols-2'
+                      : compareItems.length === 2
+                        ? 'lg:grid-cols-3'
+                        : compareItems.length === 3
+                          ? 'lg:grid-cols-4'
+                          : 'lg:grid-cols-5'
+                  }`}
+                >
+                  <div className='border-r border-gray-100 bg-gray-50 p-6 lg:col-span-1'>
+                    <h4 className='font-semibold text-gray-900'>{attribute.label}</h4>
                   </div>
-                  
-                  {compareItems.map((item) => (
-                    <div key={item.id} className="p-6 border-r border-gray-100 last:border-r-0">
+
+                  {compareItems.map(item => (
+                    <div key={item.id} className='border-r border-gray-100 p-6 last:border-r-0'>
                       {renderAttributeValue(item, attribute)}
                     </div>
                   ))}
@@ -303,17 +328,17 @@ export const ComparePage = () => {
 
         {/* Comparison Insights */}
         {compareItems.length >= 2 && (
-          <Card className="border-0 shadow-lg rounded-2xl mt-8">
+          <Card className='mt-8 rounded-2xl border-0 shadow-lg'>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-blue-600" />
+              <CardTitle className='flex items-center gap-2'>
+                <BarChart3 className='h-5 w-5 text-blue-600' />
                 Comparison Insights
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className='space-y-6'>
               {/* Best Value */}
-              <div className="bg-green-50 p-4 rounded-xl">
-                <h4 className="font-semibold text-green-800 mb-2">💰 Best Value</h4>
+              <div className='rounded-xl bg-green-50 p-4'>
+                <h4 className='mb-2 font-semibold text-green-800'>💰 Best Value</h4>
                 {(() => {
                   const bestValue = compareItems.reduce((best, item) => {
                     const valueScore = (item.rating * item.reviews) / item.price;
@@ -321,55 +346,63 @@ export const ComparePage = () => {
                     return valueScore > bestScore ? item : best;
                   });
                   return (
-                    <p className="text-green-700">
-                      <span className="font-bold">{bestValue.name}</span> by {bestValue.brand} offers the best value for money
+                    <p className='text-green-700'>
+                      <span className='font-bold'>{bestValue.name}</span> by {bestValue.brand}{' '}
+                      offers the best value for money
                     </p>
                   );
                 })()}
               </div>
 
               {/* Highest Rated */}
-              <div className="bg-yellow-50 p-4 rounded-xl">
-                <h4 className="font-semibold text-yellow-800 mb-2">⭐ Highest Rated</h4>
+              <div className='rounded-xl bg-yellow-50 p-4'>
+                <h4 className='mb-2 font-semibold text-yellow-800'>⭐ Highest Rated</h4>
                 {(() => {
-                  const highestRated = compareItems.reduce((best, item) => 
+                  const highestRated = compareItems.reduce((best, item) =>
                     item.rating > best.rating ? item : best
                   );
                   return (
-                    <p className="text-yellow-700">
-                      <span className="font-bold">{highestRated.name}</span> has the highest customer rating at {highestRated.rating}/5
+                    <p className='text-yellow-700'>
+                      <span className='font-bold'>{highestRated.name}</span> has the highest
+                      customer rating at {highestRated.rating}/5
                     </p>
                   );
                 })()}
               </div>
 
               {/* Most Popular */}
-              <div className="bg-blue-50 p-4 rounded-xl">
-                <h4 className="font-semibold text-blue-800 mb-2">🔥 Most Popular</h4>
+              <div className='rounded-xl bg-blue-50 p-4'>
+                <h4 className='mb-2 font-semibold text-blue-800'>🔥 Most Popular</h4>
                 {(() => {
-                  const mostPopular = compareItems.reduce((best, item) => 
+                  const mostPopular = compareItems.reduce((best, item) =>
                     item.reviews > best.reviews ? item : best
                   );
                   return (
-                    <p className="text-blue-700">
-                      <span className="font-bold">{mostPopular.name}</span> is the most popular with {mostPopular.reviews.toLocaleString()} reviews
+                    <p className='text-blue-700'>
+                      <span className='font-bold'>{mostPopular.name}</span> is the most popular with{' '}
+                      {mostPopular.reviews.toLocaleString()} reviews
                     </p>
                   );
                 })()}
               </div>
 
               {/* Price Range */}
-              <div className="bg-purple-50 p-4 rounded-xl">
-                <h4 className="font-semibold text-purple-800 mb-2">💵 Price Range</h4>
+              <div className='rounded-xl bg-purple-50 p-4'>
+                <h4 className='mb-2 font-semibold text-purple-800'>💵 Price Range</h4>
                 {(() => {
                   const prices = compareItems.map(item => item.price);
                   const minPrice = Math.min(...prices);
                   const maxPrice = Math.max(...prices);
                   return (
-                    <p className="text-purple-700">
-                      Price range: <span className="font-bold">${minPrice} - ${maxPrice}</span>
+                    <p className='text-purple-700'>
+                      Price range:{' '}
+                      <span className='font-bold'>
+                        ${minPrice} - ${maxPrice}
+                      </span>
                       {minPrice !== maxPrice && (
-                        <span className="ml-2">({Math.round(((maxPrice - minPrice) / minPrice) * 100)}% difference)</span>
+                        <span className='ml-2'>
+                          ({Math.round(((maxPrice - minPrice) / minPrice) * 100)}% difference)
+                        </span>
                       )}
                     </p>
                   );
@@ -381,17 +414,18 @@ export const ComparePage = () => {
 
         {/* Empty State */}
         {compareItems.length === 0 && (
-          <div className="text-center py-20">
-            <div className="w-32 h-32 mx-auto mb-8 bg-gray-100 rounded-full flex items-center justify-center">
-              <BarChart3 className="w-16 h-16 text-gray-400" />
+          <div className='py-20 text-center'>
+            <div className='mx-auto mb-8 flex h-32 w-32 items-center justify-center rounded-full bg-gray-100'>
+              <BarChart3 className='h-16 w-16 text-gray-400' />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">No products to compare</h2>
-            <p className="text-gray-600 mb-8 max-w-md mx-auto">
-              Add products to your comparison list to see detailed side-by-side comparisons of features, prices, and specifications.
+            <h2 className='mb-4 text-2xl font-bold text-gray-900'>No products to compare</h2>
+            <p className='mx-auto mb-8 max-w-md text-gray-600'>
+              Add products to your comparison list to see detailed side-by-side comparisons of
+              features, prices, and specifications.
             </p>
-            <Button 
+            <Button
               onClick={() => navigate('/')}
-              className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-semibold px-8 py-3 rounded-xl"
+              className='rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 px-8 py-3 font-semibold text-white hover:from-blue-600 hover:to-indigo-600'
             >
               Discover Products
             </Button>

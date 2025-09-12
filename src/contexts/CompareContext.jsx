@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 
 const CompareContext = createContext();
@@ -8,56 +8,56 @@ const compareReducer = (state, action) => {
     case 'SET_LOADING':
       return {
         ...state,
-        loading: action.payload
+        loading: action.payload,
       };
     case 'SET_ITEMS':
       return {
         ...state,
         items: action.payload,
-        loading: false
+        loading: false,
       };
     case 'ADD_ITEM':
       // Limit to 4 items for comparison
       if (state.items.length >= 4) {
         return {
           ...state,
-          error: 'You can compare up to 4 products at a time'
+          error: 'You can compare up to 4 products at a time',
         };
       }
-      
+
       const existingItem = state.items.find(item => item.product_id === action.payload.product_id);
       if (existingItem) {
         return {
           ...state,
-          error: 'Product already in comparison'
+          error: 'Product already in comparison',
         };
       }
-      
+
       return {
         ...state,
         items: [...state.items, action.payload],
-        error: null
+        error: null,
       };
     case 'REMOVE_ITEM':
       return {
         ...state,
-        items: state.items.filter(item => item.id !== action.payload)
+        items: state.items.filter(item => item.id !== action.payload),
       };
     case 'CLEAR_COMPARE':
       return {
         ...state,
-        items: []
+        items: [],
       };
     case 'SET_ERROR':
       return {
         ...state,
         error: action.payload,
-        loading: false
+        loading: false,
       };
     case 'CLEAR_ERROR':
       return {
         ...state,
-        error: null
+        error: null,
       };
     default:
       return state;
@@ -67,7 +67,7 @@ const compareReducer = (state, action) => {
 const initialState = {
   items: [],
   loading: false,
-  error: null
+  error: null,
 };
 
 export const CompareProvider = ({ children }) => {
@@ -85,46 +85,49 @@ export const CompareProvider = ({ children }) => {
     }
   }, [isAuthenticated]);
 
-  const addItem = useCallback(async (product) => {
-    try {
-      // Check if item already exists and remove it (toggle functionality)
-      const existingItem = state.items.find(item => item.product_id === product.id);
-      if (existingItem) {
-        dispatch({ type: 'REMOVE_ITEM', payload: existingItem.id });
-        return { success: true, action: 'removed' };
-      }
-
-      const compareItem = {
-        id: Date.now(), // Mock ID
-        product_id: product.id,
-        name: product.name,
-        brand: product.brand,
-        price: product.price,
-        originalPrice: product.originalPrice,
-        rating: product.rating || 4.5,
-        reviews: product.reviews || 100,
-        image: product.image,
-        colors: product.colors || [],
-        category: product.category || 'fashion',
-        description: product.description || 'Premium quality fashion piece',
-        features: product.features || ['Premium materials', 'Comfortable fit', 'Easy care'],
-        specifications: product.specifications || {
-          'Material': 'Premium fabric',
-          'Care': 'Machine washable',
-          'Origin': 'Made with care'
+  const addItem = useCallback(
+    async product => {
+      try {
+        // Check if item already exists and remove it (toggle functionality)
+        const existingItem = state.items.find(item => item.product_id === product.id);
+        if (existingItem) {
+          dispatch({ type: 'REMOVE_ITEM', payload: existingItem.id });
+          return { success: true, action: 'removed' };
         }
-      };
 
-      dispatch({ type: 'ADD_ITEM', payload: compareItem });
-      return { success: true, action: 'added' };
-    } catch (error) {
-      const message = 'Failed to add item to comparison';
-      dispatch({ type: 'SET_ERROR', payload: message });
-      return { success: false, error: message };
-    }
-  }, [state.items]);
+        const compareItem = {
+          id: Date.now(), // Mock ID
+          product_id: product.id,
+          name: product.name,
+          brand: product.brand,
+          price: product.price,
+          originalPrice: product.originalPrice,
+          rating: product.rating || 4.5,
+          reviews: product.reviews || 100,
+          image: product.image,
+          colors: product.colors || [],
+          category: product.category || 'fashion',
+          description: product.description || 'Premium quality fashion piece',
+          features: product.features || ['Premium materials', 'Comfortable fit', 'Easy care'],
+          specifications: product.specifications || {
+            Material: 'Premium fabric',
+            Care: 'Machine washable',
+            Origin: 'Made with care',
+          },
+        };
 
-  const removeItem = useCallback(async (itemId) => {
+        dispatch({ type: 'ADD_ITEM', payload: compareItem });
+        return { success: true, action: 'added' };
+      } catch (error) {
+        const message = 'Failed to add item to comparison';
+        dispatch({ type: 'SET_ERROR', payload: message });
+        return { success: false, error: message };
+      }
+    },
+    [state.items]
+  );
+
+  const removeItem = useCallback(async itemId => {
     try {
       dispatch({ type: 'REMOVE_ITEM', payload: itemId });
       return { success: true };
@@ -146,36 +149,38 @@ export const CompareProvider = ({ children }) => {
     }
   }, []);
 
-  const isInCompare = useCallback((productId) => {
-    return state.items.some(item => item.product_id === productId);
-  }, [state.items]);
+  const isInCompare = useCallback(
+    productId => {
+      return state.items.some(item => item.product_id === productId);
+    },
+    [state.items]
+  );
 
   const clearError = useCallback(() => {
     dispatch({ type: 'CLEAR_ERROR' });
   }, []);
 
-  const value = useMemo(() => ({
-    ...state,
-    addItem,
-    removeItem,
-    clearCompare,
-    isInCompare,
-    clearError
-  }), [state, addItem, removeItem, clearCompare, isInCompare, clearError]);
-
-  return (
-    <CompareContext.Provider value={value}>
-      {children}
-    </CompareContext.Provider>
+  const value = useMemo(
+    () => ({
+      ...state,
+      addItem,
+      removeItem,
+      clearCompare,
+      isInCompare,
+      clearError,
+    }),
+    [state, addItem, removeItem, clearCompare, isInCompare, clearError]
   );
+
+  return <CompareContext.Provider value={value}>{children}</CompareContext.Provider>;
 };
 
 export const useCompare = () => {
   const context = useContext(CompareContext);
-  
+
   if (!context) {
     throw new Error('useCompare must be used within a CompareProvider');
   }
-  
+
   return context;
 };
