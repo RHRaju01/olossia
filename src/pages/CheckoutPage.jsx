@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -21,12 +21,21 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigateWithScroll } from '../utils/navigation';
 
 export const CheckoutPage = () => {
-  const { items: cartItems, totals, updateItem, removeItem, clearCart } = useCart();
+  const {
+    items: cartItems,
+    subtotal,
+    shipping,
+    total,
+    totalItems,
+    updateItem,
+    removeItem,
+    clearCart,
+  } = useCart();
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigateWithScroll();
 
   // Scroll to top when component mounts
-  React.useEffect(() => {
+  useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
@@ -53,7 +62,7 @@ export const CheckoutPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Redirect if cart is empty
-  React.useEffect(() => {
+  useEffect(() => {
     if (cartItems.length === 0) {
       navigate('/');
     }
@@ -519,12 +528,12 @@ export const CheckoutPage = () => {
                 <div className='space-y-2'>
                   <div className='flex justify-between text-sm'>
                     <span className='text-gray-600'>Subtotal</span>
-                    <span className='font-semibold'>${totals.subtotal}</span>
+                    <span className='font-semibold'>${subtotal}</span>
                   </div>
                   <div className='flex justify-between text-sm'>
                     <span className='text-gray-600'>Shipping</span>
                     <span className='font-semibold text-green-600'>
-                      {totals.shipping === 0 ? 'Free' : `$${totals.shipping}`}
+                      {shipping === 0 ? 'Free' : `$${shipping}`}
                     </span>
                   </div>
                   <div className='flex justify-between text-sm'>
@@ -534,7 +543,7 @@ export const CheckoutPage = () => {
                   <Separator />
                   <div className='flex justify-between text-lg font-bold'>
                     <span>Total</span>
-                    <span>${totals.total}</span>
+                    <span>${total}</span>
                   </div>
                 </div>
 
