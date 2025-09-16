@@ -1,7 +1,15 @@
 import React from "react";
-import { Button } from "../ui/button";
-import { Card, CardContent } from "../ui/card";
-import { Bell, X, Package, Heart, ShoppingBag, Star, Clock } from "lucide-react";
+import { Button } from "./button";
+import { Card, CardContent } from "./card";
+import {
+  Bell,
+  X,
+  Package,
+  Heart,
+  ShoppingBag,
+  Star,
+  Clock,
+} from "lucide-react";
 
 export const NotificationDropdown = ({ isOpen, onClose }) => {
   const notifications = [
@@ -14,7 +22,7 @@ export const NotificationDropdown = ({ isOpen, onClose }) => {
       icon: Package,
       iconColor: "text-blue-500",
       bgColor: "bg-blue-50",
-      isRead: false
+      isRead: false,
     },
     {
       id: 2,
@@ -25,7 +33,7 @@ export const NotificationDropdown = ({ isOpen, onClose }) => {
       icon: Heart,
       iconColor: "text-red-500",
       bgColor: "bg-red-50",
-      isRead: false
+      isRead: false,
     },
     {
       id: 3,
@@ -36,7 +44,7 @@ export const NotificationDropdown = ({ isOpen, onClose }) => {
       icon: Star,
       iconColor: "text-yellow-500",
       bgColor: "bg-yellow-50",
-      isRead: true
+      isRead: true,
     },
     {
       id: 4,
@@ -47,7 +55,7 @@ export const NotificationDropdown = ({ isOpen, onClose }) => {
       icon: ShoppingBag,
       iconColor: "text-purple-500",
       bgColor: "bg-purple-50",
-      isRead: true
+      isRead: true,
     },
     {
       id: 5,
@@ -58,16 +66,16 @@ export const NotificationDropdown = ({ isOpen, onClose }) => {
       icon: Clock,
       iconColor: "text-green-500",
       bgColor: "bg-green-50",
-      isRead: true
-    }
+      isRead: true,
+    },
   ];
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       className="absolute top-full right-0 mt-2 w-96 z-[55]"
       onMouseEnter={() => {}}
       onMouseLeave={() => {}}
@@ -98,20 +106,28 @@ export const NotificationDropdown = ({ isOpen, onClose }) => {
           {/* Notifications List */}
           <div className="max-h-80 overflow-y-auto scrollbar-hide">
             {notifications.map((notification) => (
-              <div 
-                key={notification.id} 
+              <div
+                key={notification.id}
                 className={`p-4 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 cursor-pointer transition-colors duration-200 ${
-                  !notification.isRead ? 'bg-blue-50/30' : ''
+                  !notification.isRead ? "bg-blue-50/30" : ""
                 }`}
               >
                 <div className="flex gap-4">
-                  <div className={`w-10 h-10 ${notification.bgColor} rounded-full flex items-center justify-center flex-shrink-0`}>
-                    <notification.icon className={`w-5 h-5 ${notification.iconColor}`} />
+                  <div
+                    className={`w-10 h-10 ${notification.bgColor} rounded-full flex items-center justify-center flex-shrink-0`}
+                  >
+                    <notification.icon
+                      className={`w-5 h-5 ${notification.iconColor}`}
+                    />
                   </div>
-                  
+
                   <div className="flex-1 space-y-1">
                     <div className="flex items-start justify-between">
-                      <h4 className={`font-semibold text-gray-900 text-sm ${!notification.isRead ? 'font-bold' : ''}`}>
+                      <h4
+                        className={`font-semibold text-gray-900 text-sm ${
+                          !notification.isRead ? "font-bold" : ""
+                        }`}
+                      >
                         {notification.title}
                       </h4>
                       {!notification.isRead && (
@@ -133,15 +149,13 @@ export const NotificationDropdown = ({ isOpen, onClose }) => {
           {/* Footer */}
           <div className="p-6 bg-gray-50 space-y-3">
             <div className="flex gap-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="flex-1 rounded-xl py-2 text-sm font-medium hover:bg-blue-50 hover:border-blue-200"
               >
                 Mark All Read
               </Button>
-              <Button 
-                className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-semibold rounded-xl py-2 text-sm"
-              >
+              <Button className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-semibold rounded-xl py-2 text-sm">
                 View All
               </Button>
             </div>

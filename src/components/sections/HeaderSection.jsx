@@ -1,14 +1,26 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNavigateWithScroll } from "../../utils/navigation";
-import { Search, ShoppingBag, Heart, User, Menu, X, Bell, ChevronRight, Package, Star, Eye } from "lucide-react";
+import {
+  Search,
+  ShoppingBag,
+  Heart,
+  User,
+  Menu,
+  X,
+  Bell,
+  ChevronRight,
+  Package,
+  Star,
+  Eye,
+} from "lucide-react";
 import { BarChart3 } from "lucide-react";
 import { Button } from "../ui/button";
-import { SearchBar } from "../common/SearchBar/SearchBar";
-import { CartDropdown } from "../CartDropdown/CartDropdown";
-import { WishlistDropdown } from "../WishlistDropdown/WishlistDropdown";
-import { NotificationDropdown } from "../NotificationDropdown/NotificationDropdown";
-import { CompareDropdown } from "../CompareDropdown/CompareDropdown";
+import { SearchBar } from "../ui/SearchBar";
+import { CartDropdown } from "../commerce/CartDropdown";
+import { WishlistDropdown } from "../commerce/WishlistDropdown";
+import { NotificationDropdown } from "../ui/NotificationDropdown";
+import { CompareDropdown } from "../commerce/CompareDropdown";
 import { useCart } from "../../contexts/CartContext";
 import { useWishlist } from "../../contexts/WishlistContext";
 import { useCompare } from "../../contexts/CompareContext";
@@ -18,7 +30,7 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
   const { totals } = useCart();
   const { items: wishlistItems } = useWishlist();
   const { items: compareItems } = useCompare();
-  
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
@@ -30,7 +42,7 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
     { name: "Men", path: "/products?category=men" },
     { name: "Kids", path: "/products?category=kids" },
     { name: "Beauty", path: "/products?category=beauty" },
-    { name: "Home", path: "/products?category=home" }
+    { name: "Home", path: "/products?category=home" },
   ];
 
   const handleNavClick = (path) => {
@@ -40,47 +52,53 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
   // Handle clicking outside to close dropdowns
   React.useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!isMenuOpen && !event.target.closest('.cart-dropdown-container')) {
+      if (!isMenuOpen && !event.target.closest(".cart-dropdown-container")) {
         setIsCartOpen(false);
       }
-      if (!isMenuOpen && !event.target.closest('.wishlist-dropdown-container')) {
+      if (
+        !isMenuOpen &&
+        !event.target.closest(".wishlist-dropdown-container")
+      ) {
         setIsWishlistOpen(false);
       }
-      if (!isMenuOpen && !event.target.closest('.notification-dropdown-container')) {
+      if (
+        !isMenuOpen &&
+        !event.target.closest(".notification-dropdown-container")
+      ) {
         setIsNotificationOpen(false);
       }
-      if (!isMenuOpen && !event.target.closest('.compare-dropdown-container')) {
+      if (!isMenuOpen && !event.target.closest(".compare-dropdown-container")) {
         setIsCompareOpen(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isMenuOpen]);
 
   // Desktop dropdown handlers - only work when hamburger menu is closed
   const handleDesktopDropdownOpen = (dropdownType) => {
     if (isMenuOpen) return; // Prevent desktop dropdowns when hamburger is open
-    
-    setIsCartOpen(dropdownType === 'cart');
-    setIsWishlistOpen(dropdownType === 'wishlist');
-    setIsNotificationOpen(dropdownType === 'notification');
-    setIsCompareOpen(dropdownType === 'compare');
+
+    setIsCartOpen(dropdownType === "cart");
+    setIsWishlistOpen(dropdownType === "wishlist");
+    setIsNotificationOpen(dropdownType === "notification");
+    setIsCompareOpen(dropdownType === "compare");
   };
 
   // Mobile menu dropdown toggle (doesn't close mobile menu)
   const handleMobileDropdownToggle = (dropdownType) => {
-    if (dropdownType === 'wishlist') {
+    if (dropdownType === "wishlist") {
       setIsWishlistOpen(!isWishlistOpen);
       setIsNotificationOpen(false);
       setIsCompareOpen(false);
-    } else if (dropdownType === 'notification') {
+    } else if (dropdownType === "notification") {
       setIsNotificationOpen(!isNotificationOpen);
       setIsWishlistOpen(false);
       setIsCompareOpen(false);
-    } else if (dropdownType === 'compare') {
+    } else if (dropdownType === "compare") {
       setIsCompareOpen(!isCompareOpen);
       setIsWishlistOpen(false);
       setIsNotificationOpen(false);
@@ -99,7 +117,7 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
   const handleMobileMenuToggle = () => {
     const newMenuState = !isMenuOpen;
     setIsMenuOpen(newMenuState);
-    
+
     if (newMenuState) {
       setIsCartOpen(false);
       setIsWishlistOpen(false);
@@ -122,9 +140,9 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <h1 
+            <h1
               className="text-3xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent cursor-pointer"
-              onClick={() => navigate('/')}
+              onClick={() => navigate("/")}
             >
               OLOSSIA
             </h1>
@@ -154,12 +172,16 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
             {/* Desktop action buttons - hidden on mobile */}
             {/* Notification button with dropdown */}
             <div className="relative hidden sm:block notification-dropdown-container z-50">
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="rounded-full hover:bg-gray-100"
-                onMouseEnter={() => handleDesktopDropdownOpen('notification')}
-                onClick={() => handleDesktopDropdownOpen(isNotificationOpen ? null : 'notification')}
+                onMouseEnter={() => handleDesktopDropdownOpen("notification")}
+                onClick={() =>
+                  handleDesktopDropdownOpen(
+                    isNotificationOpen ? null : "notification"
+                  )
+                }
               >
                 <Bell className="w-5 h-5" />
                 {5 > 0 && (
@@ -169,33 +191,35 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                 )}
               </Button>
               {!isMenuOpen && (
-                <NotificationDropdown 
-                  isOpen={isNotificationOpen} 
-                  onClose={() => setIsNotificationOpen(false)} 
+                <NotificationDropdown
+                  isOpen={isNotificationOpen}
+                  onClose={() => setIsNotificationOpen(false)}
                 />
               )}
             </div>
-            
+
             {/* User button */}
             <div className="relative hidden sm:block z-50">
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="rounded-full hover:bg-gray-100"
                 onClick={handleUserClick}
               >
                 <User className="w-5 h-5" />
               </Button>
             </div>
-            
+
             {/* Wishlist button with dropdown */}
             <div className="relative hidden sm:block wishlist-dropdown-container z-50">
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="rounded-full hover:bg-gray-100"
-                onMouseEnter={() => handleDesktopDropdownOpen('wishlist')}
-                onClick={() => handleDesktopDropdownOpen(isWishlistOpen ? null : 'wishlist')}
+                onMouseEnter={() => handleDesktopDropdownOpen("wishlist")}
+                onClick={() =>
+                  handleDesktopDropdownOpen(isWishlistOpen ? null : "wishlist")
+                }
               >
                 <Heart className="w-5 h-5" />
                 {wishlistItems.length > 0 && (
@@ -205,21 +229,23 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                 )}
               </Button>
               {!isMenuOpen && (
-                <WishlistDropdown 
-                  isOpen={isWishlistOpen} 
-                  onClose={() => setIsWishlistOpen(false)} 
+                <WishlistDropdown
+                  isOpen={isWishlistOpen}
+                  onClose={() => setIsWishlistOpen(false)}
                 />
               )}
             </div>
 
             {/* Compare button with dropdown */}
             <div className="relative hidden sm:block compare-dropdown-container z-50">
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="rounded-full hover:bg-gray-100"
-                onMouseEnter={() => handleDesktopDropdownOpen('compare')}
-                onClick={() => handleDesktopDropdownOpen(isCompareOpen ? null : 'compare')}
+                onMouseEnter={() => handleDesktopDropdownOpen("compare")}
+                onClick={() =>
+                  handleDesktopDropdownOpen(isCompareOpen ? null : "compare")
+                }
               >
                 <BarChart3 className="w-5 h-5" />
                 {compareItems.length > 0 && (
@@ -229,21 +255,23 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                 )}
               </Button>
               {!isMenuOpen && (
-                <CompareDropdown 
-                  isOpen={isCompareOpen} 
-                  onClose={() => setIsCompareOpen(false)} 
+                <CompareDropdown
+                  isOpen={isCompareOpen}
+                  onClose={() => setIsCompareOpen(false)}
                 />
               )}
             </div>
 
             {/* Cart button with dropdown */}
             <div className="relative cart-dropdown-container z-50">
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="rounded-full hover:bg-gray-100"
-                onMouseEnter={() => handleDesktopDropdownOpen('cart')}
-                onClick={() => handleDesktopDropdownOpen(isCartOpen ? null : 'cart')}
+                onMouseEnter={() => handleDesktopDropdownOpen("cart")}
+                onClick={() =>
+                  handleDesktopDropdownOpen(isCartOpen ? null : "cart")
+                }
               >
                 <ShoppingBag className="w-5 h-5" />
                 {totals.itemCount > 0 && (
@@ -253,9 +281,9 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                 )}
               </Button>
               {!isMenuOpen && (
-                <CartDropdown 
-                  isOpen={isCartOpen} 
-                  onClose={() => setIsCartOpen(false)} 
+                <CartDropdown
+                  isOpen={isCartOpen}
+                  onClose={() => setIsCartOpen(false)}
                 />
               )}
             </div>
@@ -267,17 +295,18 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
               className="lg:hidden rounded-full"
               onClick={handleMobileMenuToggle}
             >
-              {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {isMenuOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
             </Button>
           </div>
         </div>
 
         {/* Mobile search */}
         <div className="md:hidden pb-4">
-          <SearchBar 
-            placeholder="Search products..."
-            className="w-full"
-          />
+          <SearchBar placeholder="Search products..." className="w-full" />
         </div>
 
         {/* Mobile menu */}
@@ -286,7 +315,9 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
             {/* Mobile navigation */}
             <nav className="flex flex-col py-4">
               <div className="px-4 pb-4">
-                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Categories</p>
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  Categories
+                </p>
               </div>
               {navItems.map((item) => (
                 <Button
@@ -307,9 +338,11 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
             {/* Mobile action buttons */}
             <div className="border-t border-gray-100 py-4">
               <div className="px-4 pb-4">
-                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Account & More</p>
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  Account & More
+                </p>
               </div>
-              
+
               {/* User account */}
               <Button
                 variant="ghost"
@@ -325,11 +358,11 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                 </div>
                 <ChevronRight className="w-5 h-5" />
               </Button>
-              
+
               {/* Wishlist */}
               <Button
                 variant="ghost"
-                onClick={() => handleMobileDropdownToggle('wishlist')}
+                onClick={() => handleMobileDropdownToggle("wishlist")}
                 className="justify-between text-gray-700 hover:text-red-600 hover:bg-red-50 mx-4 rounded-xl py-4 text-lg font-medium w-auto"
               >
                 <div className="flex items-center gap-3">
@@ -341,9 +374,13 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                     </span>
                   )}
                 </div>
-                <ChevronRight className={`w-4 h-4 transition-transform ${isWishlistOpen ? 'rotate-90' : ''}`} />
+                <ChevronRight
+                  className={`w-4 h-4 transition-transform ${
+                    isWishlistOpen ? "rotate-90" : ""
+                  }`}
+                />
               </Button>
-              
+
               {/* Wishlist content in mobile menu */}
               {isWishlistOpen && (
                 <div className="mx-4 mb-4 bg-gray-50 rounded-xl overflow-hidden">
@@ -351,7 +388,10 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                     <>
                       <div className="max-h-60 overflow-y-auto">
                         {wishlistItems.slice(0, 3).map((item) => (
-                          <div key={item.id} className="p-4 border-b border-gray-200 last:border-b-0">
+                          <div
+                            key={item.id}
+                            className="p-4 border-b border-gray-200 last:border-b-0"
+                          >
                             <div className="flex gap-3">
                               <img
                                 src={item.image}
@@ -359,9 +399,15 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                                 className="w-12 h-12 object-cover rounded-lg"
                               />
                               <div className="flex-1">
-                                <p className="text-xs text-red-600 font-bold uppercase">{item.brand}</p>
-                                <h4 className="font-semibold text-gray-900 text-sm">{item.name}</h4>
-                                <p className="text-sm font-bold text-gray-900">${item.price}</p>
+                                <p className="text-xs text-red-600 font-bold uppercase">
+                                  {item.brand}
+                                </p>
+                                <h4 className="font-semibold text-gray-900 text-sm">
+                                  {item.name}
+                                </h4>
+                                <p className="text-sm font-bold text-gray-900">
+                                  ${item.price}
+                                </p>
                               </div>
                               <div className="flex flex-col gap-1">
                                 <Button
@@ -384,9 +430,9 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                         ))}
                       </div>
                       <div className="p-4 border-t border-gray-200">
-                        <Button 
+                        <Button
                           onClick={() => {
-                            navigate('/wishlist');
+                            navigate("/wishlist");
                             setIsMenuOpen(false);
                           }}
                           className="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-bold py-3 rounded-xl"
@@ -398,16 +444,18 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                   ) : (
                     <div className="p-6 text-center">
                       <Heart className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-600">Your wishlist is empty</p>
+                      <p className="text-sm text-gray-600">
+                        Your wishlist is empty
+                      </p>
                     </div>
                   )}
                 </div>
               )}
-              
+
               {/* Compare Products */}
               <Button
                 variant="ghost"
-                onClick={() => handleMobileDropdownToggle('compare')}
+                onClick={() => handleMobileDropdownToggle("compare")}
                 className="justify-between text-gray-700 hover:text-blue-600 hover:bg-blue-50 mx-4 rounded-xl py-4 text-lg font-medium w-auto"
               >
                 <div className="flex items-center gap-3">
@@ -419,9 +467,13 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                     </span>
                   )}
                 </div>
-                <ChevronRight className={`w-4 h-4 transition-transform ${isCompareOpen ? 'rotate-90' : ''}`} />
+                <ChevronRight
+                  className={`w-4 h-4 transition-transform ${
+                    isCompareOpen ? "rotate-90" : ""
+                  }`}
+                />
               </Button>
-              
+
               {/* Compare content in mobile menu */}
               {isCompareOpen && (
                 <div className="mx-4 mb-4 bg-gray-50 rounded-xl overflow-hidden">
@@ -429,7 +481,10 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                     <>
                       <div className="max-h-60 overflow-y-auto">
                         {compareItems.map((item) => (
-                          <div key={item.id} className="p-4 border-b border-gray-200 last:border-b-0">
+                          <div
+                            key={item.id}
+                            className="p-4 border-b border-gray-200 last:border-b-0"
+                          >
                             <div className="flex gap-3">
                               <img
                                 src={item.image}
@@ -437,9 +492,15 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                                 className="w-12 h-12 object-cover rounded-lg"
                               />
                               <div className="flex-1">
-                                <p className="text-xs text-blue-600 font-bold uppercase">{item.brand}</p>
-                                <h4 className="font-semibold text-gray-900 text-sm">{item.name}</h4>
-                                <p className="text-sm font-bold text-gray-900">${item.price}</p>
+                                <p className="text-xs text-blue-600 font-bold uppercase">
+                                  {item.brand}
+                                </p>
+                                <h4 className="font-semibold text-gray-900 text-sm">
+                                  {item.name}
+                                </h4>
+                                <p className="text-sm font-bold text-gray-900">
+                                  ${item.price}
+                                </p>
                               </div>
                               <div className="flex flex-col gap-1">
                                 <Button
@@ -462,9 +523,9 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                         ))}
                       </div>
                       <div className="p-4 border-t border-gray-200">
-                        <Button 
+                        <Button
                           onClick={() => {
-                            navigate('/compare');
+                            navigate("/compare");
                             setIsMenuOpen(false);
                           }}
                           className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-bold py-3 rounded-xl"
@@ -476,16 +537,18 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                   ) : (
                     <div className="p-6 text-center">
                       <BarChart3 className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-600">No products to compare</p>
+                      <p className="text-sm text-gray-600">
+                        No products to compare
+                      </p>
                     </div>
                   )}
                 </div>
               )}
-              
+
               {/* Notifications */}
               <Button
                 variant="ghost"
-                onClick={() => handleMobileDropdownToggle('notification')}
+                onClick={() => handleMobileDropdownToggle("notification")}
                 className="justify-between text-gray-700 hover:text-blue-600 hover:bg-blue-50 mx-4 rounded-xl py-4 text-lg font-medium w-auto"
               >
                 <div className="flex items-center gap-3">
@@ -497,22 +560,33 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                     </span>
                   )}
                 </div>
-                <ChevronRight className={`w-4 h-4 transition-transform ${isNotificationOpen ? 'rotate-90' : ''}`} />
+                <ChevronRight
+                  className={`w-4 h-4 transition-transform ${
+                    isNotificationOpen ? "rotate-90" : ""
+                  }`}
+                />
               </Button>
-              
+
               {/* Notification content in mobile menu */}
               {isNotificationOpen && (
                 <div className="mx-4 mb-4 bg-gray-50 rounded-xl overflow-hidden">
                   <div className="max-h-60 overflow-y-auto">
                     {[1, 2, 3].map((notif) => (
-                      <div key={notif} className="p-4 border-b border-gray-200 last:border-b-0">
+                      <div
+                        key={notif}
+                        className="p-4 border-b border-gray-200 last:border-b-0"
+                      >
                         <div className="flex gap-3">
                           <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                             <Package className="w-4 h-4 text-blue-600" />
                           </div>
                           <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900 text-sm">Order Update</h4>
-                            <p className="text-xs text-gray-600">Your order has been shipped</p>
+                            <h4 className="font-semibold text-gray-900 text-sm">
+                              Order Update
+                            </h4>
+                            <p className="text-xs text-gray-600">
+                              Your order has been shipped
+                            </p>
                             <p className="text-xs text-gray-400">2 hours ago</p>
                           </div>
                           <Button
@@ -527,7 +601,7 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                     ))}
                   </div>
                   <div className="p-4 border-t border-gray-200">
-                    <Button 
+                    <Button
                       onClick={() => {
                         // Navigate to notifications page (when implemented)
                         setIsMenuOpen(false);
@@ -540,18 +614,20 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                 </div>
               )}
             </div>
-            
+
             {/* Mobile footer links */}
             <div className="border-t border-gray-100 py-4">
               <div className="px-4 pb-4">
-                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Quick Links</p>
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  Quick Links
+                </p>
               </div>
-              
+
               <div className="space-y-1">
                 <Button
                   variant="ghost"
                   onClick={() => {
-                    navigate('/categories');
+                    navigate("/categories");
                     setIsMenuOpen(false);
                   }}
                   className="justify-between text-gray-700 hover:text-purple-600 hover:bg-purple-50 mx-4 rounded-xl py-3 text-base font-medium w-auto"
@@ -562,7 +638,7 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                 <Button
                   variant="ghost"
                   onClick={() => {
-                    navigate('/brands');
+                    navigate("/brands");
                     setIsMenuOpen(false);
                   }}
                   className="justify-between text-gray-700 hover:text-purple-600 hover:bg-purple-50 mx-4 rounded-xl py-3 text-base font-medium w-auto"
@@ -573,7 +649,7 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                 <Button
                   variant="ghost"
                   onClick={() => {
-                    navigate('/trending');
+                    navigate("/trending");
                     setIsMenuOpen(false);
                   }}
                   className="justify-between text-gray-700 hover:text-purple-600 hover:bg-purple-50 mx-4 rounded-xl py-3 text-base font-medium w-auto"
@@ -590,4 +666,4 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
   );
 });
 
-HeaderSection.displayName = 'HeaderSection';
+HeaderSection.displayName = "HeaderSection";

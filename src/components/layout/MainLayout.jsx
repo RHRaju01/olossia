@@ -1,23 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { HeaderSection } from '../components/sections/HeaderSection';
-import { FooterSection } from '../components/sections/FooterSection';
-import { AuthOverlay } from '../components/AuthOverlay/AuthOverlay';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState, useEffect, useCallback } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { HeaderSection } from "../sections/HeaderSection";
+import { FooterSection } from "../sections/FooterSection";
+import { AuthOverlay } from "../auth/AuthOverlay";
+import { useAuth } from "../../contexts/AuthContext";
 
 // Memoized header component
 const MemoizedHeader = React.memo(({ onAuthModalOpen }) => (
   <HeaderSection onAuthModalOpen={onAuthModalOpen} />
 ));
 
-MemoizedHeader.displayName = 'MemoizedHeader';
+MemoizedHeader.displayName = "MemoizedHeader";
 
 // Memoized footer component
-const MemoizedFooter = React.memo(() => (
-  <FooterSection />
-));
+const MemoizedFooter = React.memo(() => <FooterSection />);
 
-MemoizedFooter.displayName = 'MemoizedFooter';
+MemoizedFooter.displayName = "MemoizedFooter";
 
 export const MainLayout = () => {
   const [isAuthOverlayOpen, setIsAuthOverlayOpen] = useState(false);
@@ -26,7 +24,8 @@ export const MainLayout = () => {
   const { isAuthenticated } = useAuth();
 
   // Check if current path is auth-related
-  const isAuthPath = location.pathname === '/login' || location.pathname === '/register';
+  const isAuthPath =
+    location.pathname === "/login" || location.pathname === "/register";
 
   // Open overlay when navigating to auth paths
   useEffect(() => {
@@ -40,7 +39,7 @@ export const MainLayout = () => {
     if (isAuthenticated && isAuthOverlayOpen) {
       setIsAuthOverlayOpen(false);
       if (isAuthPath) {
-        navigate('/', { replace: true });
+        navigate("/", { replace: true });
       }
     }
   }, [isAuthenticated, isAuthOverlayOpen, isAuthPath, navigate]);
@@ -48,7 +47,7 @@ export const MainLayout = () => {
   const handleAuthOverlayClose = useCallback(() => {
     setIsAuthOverlayOpen(false);
     if (isAuthPath) {
-      navigate('/', { replace: true });
+      navigate("/", { replace: true });
     }
   }, [isAuthPath, navigate]);
 
@@ -63,9 +62,9 @@ export const MainLayout = () => {
         <Outlet />
       </main>
       <MemoizedFooter />
-      <AuthOverlay 
-        isOpen={isAuthOverlayOpen} 
-        onClose={handleAuthOverlayClose} 
+      <AuthOverlay
+        isOpen={isAuthOverlayOpen}
+        onClose={handleAuthOverlayClose}
       />
     </div>
   );
