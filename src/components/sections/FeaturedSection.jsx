@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import { Button } from "../ui/button";
 import { ArrowRight } from "lucide-react";
 import { ProductCard } from "../commerce/ProductCard";
-import { useCart } from "../../contexts/CartContext";
+import { useCart } from "../../hooks/useCartUnified";
 import { useWishlist } from "../../contexts/WishlistContext";
 import { useCompare } from "../../contexts/CompareContext";
 import { useNavigateWithScroll } from "../../utils/navigation";

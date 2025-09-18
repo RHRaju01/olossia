@@ -16,7 +16,7 @@ import {
   Check,
   BarChart3,
 } from "lucide-react";
-import { useCart } from "../contexts/CartContext";
+import { useCart } from "../hooks/useCartUnified";
 import { useWishlist } from "../contexts/WishlistContext";
 import { useCompare } from "../contexts/CompareContext";
 import { useParams } from "react-router-dom";

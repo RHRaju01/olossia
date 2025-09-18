@@ -21,7 +21,7 @@ import { CartDropdown } from "../commerce/CartDropdown";
 import { WishlistDropdown } from "../commerce/WishlistDropdown";
 import { NotificationDropdown } from "../ui/NotificationDropdown";
 import { CompareDropdown } from "../commerce/CompareDropdown";
-import { useCart } from "../../contexts/CartContext";
+import { useCart } from "../../hooks/useCartUnified";
 import { useWishlist } from "../../contexts/WishlistContext";
 import { useCompare } from "../../contexts/CompareContext";
 

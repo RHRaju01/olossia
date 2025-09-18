@@ -2,6 +2,7 @@ import React from "react";
 import { Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "react-query";
+import { Provider as ReduxProvider } from "react-redux";
 import { Button } from "./components/ui/button";
 import { AuthProvider } from "./contexts/AuthContext";
 import { CartProvider } from "./contexts/CartContext";
@@ -9,6 +10,8 @@ import { WishlistProvider } from "./contexts/WishlistContext";
 import { CompareProvider } from "./contexts/CompareContext";
 import { MainLayout } from "./components/layout/MainLayout";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { store } from "./store";
+import { isFeatureEnabled } from "./config/featureFlags";
 
 // Lazy load pages for better performance
 const HomePage = React.lazy(() =>
@@ -90,13 +93,27 @@ const queryClient = new QueryClient({
   },
 });
 
+// Conditional Cart Provider Component
+// This ensures seamless switching between Context API and Redux without UI changes
+const ConditionalCartProvider = ({ children }) => {
+  const useReduxCart = isFeatureEnabled("USE_REDUX_CART");
+
+  if (useReduxCart) {
+    // Redux implementation - wrap with Redux Provider
+    return <ReduxProvider store={store}>{children}</ReduxProvider>;
+  }
+
+  // Context API implementation (current default)
+  return <CartProvider>{children}</CartProvider>;
+};
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <WishlistProvider>
           <CompareProvider>
-            <CartProvider>
+            <ConditionalCartProvider>
               <Router>
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
@@ -199,7 +216,7 @@ function App() {
                   </Routes>
                 </Suspense>
               </Router>
-            </CartProvider>
+            </ConditionalCartProvider>
           </CompareProvider>
         </WishlistProvider>
       </AuthProvider>

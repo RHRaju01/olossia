@@ -17,7 +17,7 @@ import {
   Search,
 } from "lucide-react";
 import { SearchBar } from "../components/ui/SearchBar";
-import { useCart } from "../contexts/CartContext";
+import { useCart } from "../hooks/useCartUnified";
 import { useWishlist } from "../contexts/WishlistContext";
 import { useCompare } from "../contexts/CompareContext";
 import { useNavigateWithScroll } from "../utils/navigation";

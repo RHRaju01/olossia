@@ -1,19 +1,29 @@
-import React from 'react';
-import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
-import { Heart, ShoppingBag, X, Star, ArrowLeft, Filter, Grid, List, BarChart3 } from 'lucide-react';
-import { useWishlist } from '../contexts/WishlistContext';
-import { useCart } from '../contexts/CartContext';
-import { useCompare } from '../contexts/CompareContext';
-import { useNavigateWithScroll } from '../utils/navigation';
-import { useNavigate } from 'react-router-dom';
+import React from "react";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import {
+  Heart,
+  ShoppingBag,
+  X,
+  Star,
+  ArrowLeft,
+  Filter,
+  Grid,
+  List,
+  BarChart3,
+} from "lucide-react";
+import { useWishlist } from "../contexts/WishlistContext";
+import { useCart } from "../hooks/useCartUnified";
+import { useCompare } from "../contexts/CompareContext";
+import { useNavigateWithScroll } from "../utils/navigation";
+import { useNavigate } from "react-router-dom";
 
 export const WishlistPage = () => {
   const { items: wishlistItems, removeItem, clearWishlist } = useWishlist();
   const { addItem: addToCart } = useCart();
   const { addItem: addToCompare, isInCompare } = useCompare();
   const navigate = useNavigateWithScroll();
-  const [viewMode, setViewMode] = React.useState('grid');
+  const [viewMode, setViewMode] = React.useState("grid");
 
   // Scroll to top when component mounts or ID changes
   React.useEffect(() => {
@@ -26,16 +36,16 @@ export const WishlistPage = () => {
 
   const handleAddToCart = async (item) => {
     if (!item.inStock) return;
-    
+
     const product = {
       id: item.product_id,
       name: item.name,
       brand: item.brand,
       price: item.price,
       originalPrice: item.originalPrice,
-      image: item.image
+      image: item.image,
     };
-    
+
     const result = await addToCart(product);
     if (result.success) {
       // Optionally remove from wishlist after adding to cart
@@ -53,14 +63,16 @@ export const WishlistPage = () => {
       image: item.image,
       rating: item.rating,
       reviews: item.reviews,
-      colors: item.colors
+      colors: item.colors,
     };
-    
+
     await addToCompare(product);
   };
 
   const handleClearWishlist = async () => {
-    if (window.confirm('Are you sure you want to clear your entire wishlist?')) {
+    if (
+      window.confirm("Are you sure you want to clear your entire wishlist?")
+    ) {
       await clearWishlist();
     }
   };
@@ -85,7 +97,8 @@ export const WishlistPage = () => {
                 My Wishlist
               </h1>
               <p className="text-gray-600 mt-1">
-                {wishlistItems.length} {wishlistItems.length === 1 ? 'item' : 'items'} saved
+                {wishlistItems.length}{" "}
+                {wishlistItems.length === 1 ? "item" : "items"} saved
               </p>
             </div>
           </div>
@@ -94,17 +107,17 @@ export const WishlistPage = () => {
             {/* View mode toggle */}
             <div className="flex items-center bg-white rounded-xl border border-gray-200 p-1">
               <Button
-                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                variant={viewMode === "grid" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => setViewMode('grid')}
+                onClick={() => setViewMode("grid")}
                 className="rounded-lg"
               >
                 <Grid className="w-4 h-4" />
               </Button>
               <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                variant={viewMode === "list" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => setViewMode('list')}
+                onClick={() => setViewMode("list")}
                 className="rounded-lg"
               >
                 <List className="w-4 h-4" />
@@ -129,31 +142,37 @@ export const WishlistPage = () => {
             <div className="w-32 h-32 mx-auto mb-8 bg-gray-100 rounded-full flex items-center justify-center">
               <Heart className="w-16 h-16 text-gray-400" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Your wishlist is empty</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Your wishlist is empty
+            </h2>
             <p className="text-gray-600 mb-8 max-w-md mx-auto">
-              Start adding items you love by clicking the heart icon on any product!
+              Start adding items you love by clicking the heart icon on any
+              product!
             </p>
-            <Button 
-              onClick={() => navigate('/')}
+            <Button
+              onClick={() => navigate("/")}
               className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-semibold px-8 py-3 rounded-xl"
             >
               Discover Products
             </Button>
           </div>
         ) : (
-          <div className={viewMode === 'grid' 
-            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8" 
-            : "space-y-6"
-          }>
+          <div
+            className={
+              viewMode === "grid"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+                : "space-y-6"
+            }
+          >
             {wishlistItems.map((item) => (
               <Card
                 key={item.id}
                 className={`group border-0 shadow-sm hover:shadow-xl transition-all duration-300 bg-white overflow-hidden ${
-                  viewMode === 'grid' ? 'rounded-2xl' : 'rounded-xl'
+                  viewMode === "grid" ? "rounded-2xl" : "rounded-xl"
                 }`}
               >
                 <CardContent className="p-0">
-                  {viewMode === 'grid' ? (
+                  {viewMode === "grid" ? (
                     // Grid view
                     <>
                       <div className="relative overflow-hidden">
@@ -162,13 +181,13 @@ export const WishlistPage = () => {
                           alt={item.name}
                           className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500"
                         />
-                        
+
                         {item.originalPrice && (
                           <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
                             SALE
                           </div>
                         )}
-                        
+
                         {!item.inStock && (
                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                             <span className="text-white font-bold bg-black/70 px-4 py-2 rounded-full">
@@ -188,20 +207,30 @@ export const WishlistPage = () => {
 
                       <div className="p-6 space-y-4">
                         <div>
-                          <p className="text-sm text-red-600 font-bold uppercase tracking-wider">{item.brand}</p>
-                          <h3 className="font-bold text-gray-900 text-lg leading-tight">{item.name}</h3>
+                          <p className="text-sm text-red-600 font-bold uppercase tracking-wider">
+                            {item.brand}
+                          </p>
+                          <h3 className="font-bold text-gray-900 text-lg leading-tight">
+                            {item.name}
+                          </h3>
                         </div>
 
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1">
                             {[...Array(5)].map((_, i) => (
-                              <Star 
-                                key={i} 
-                                className={`w-4 h-4 ${i < Math.floor(item.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}`} 
+                              <Star
+                                key={i}
+                                className={`w-4 h-4 ${
+                                  i < Math.floor(item.rating)
+                                    ? "fill-yellow-400 text-yellow-400"
+                                    : "text-gray-200"
+                                }`}
                               />
                             ))}
                           </div>
-                          <span className="text-sm text-gray-600">({item.reviews})</span>
+                          <span className="text-sm text-gray-600">
+                            ({item.reviews})
+                          </span>
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -219,9 +248,13 @@ export const WishlistPage = () => {
 
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="text-xl font-bold text-gray-900">${item.price}</span>
+                            <span className="text-xl font-bold text-gray-900">
+                              ${item.price}
+                            </span>
                             {item.originalPrice && (
-                              <span className="text-sm text-gray-400 line-through">${item.originalPrice}</span>
+                              <span className="text-sm text-gray-400 line-through">
+                                ${item.originalPrice}
+                              </span>
                             )}
                           </div>
                         </div>
@@ -232,12 +265,14 @@ export const WishlistPage = () => {
                             onClick={() => handleAddToCompare(item)}
                             className={`flex-1 py-2 rounded-xl font-semibold ${
                               isInCompare(item.product_id)
-                                ? 'bg-blue-50 border-blue-200 text-blue-600'
-                                : 'hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600'
+                                ? "bg-blue-50 border-blue-200 text-blue-600"
+                                : "hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600"
                             }`}
                           >
                             <BarChart3 className="w-4 h-4 mr-2" />
-                            {isInCompare(item.product_id) ? 'In Compare' : 'Compare'}
+                            {isInCompare(item.product_id)
+                              ? "In Compare"
+                              : "Compare"}
                           </Button>
                           <Button
                             onClick={() => handleAddToCart(item)}
@@ -245,7 +280,7 @@ export const WishlistPage = () => {
                             className="flex-1 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-semibold py-2 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <ShoppingBag className="w-4 h-4 mr-2" />
-                            {item.inStock ? 'Add to Cart' : 'Out of Stock'}
+                            {item.inStock ? "Add to Cart" : "Out of Stock"}
                           </Button>
                         </div>
                       </div>
@@ -266,31 +301,45 @@ export const WishlistPage = () => {
                         )}
                         {!item.inStock && (
                           <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">OUT OF STOCK</span>
+                            <span className="text-white text-xs font-bold">
+                              OUT OF STOCK
+                            </span>
                           </div>
                         )}
                       </div>
 
                       <div className="flex-1 space-y-3">
                         <div>
-                          <p className="text-sm text-red-600 font-bold uppercase tracking-wider">{item.brand}</p>
-                          <h3 className="font-bold text-gray-900 text-xl leading-tight">{item.name}</h3>
+                          <p className="text-sm text-red-600 font-bold uppercase tracking-wider">
+                            {item.brand}
+                          </p>
+                          <h3 className="font-bold text-gray-900 text-xl leading-tight">
+                            {item.name}
+                          </h3>
                         </div>
 
                         <div className="flex items-center gap-4">
                           <div className="flex items-center gap-1">
                             {[...Array(5)].map((_, i) => (
-                              <Star 
-                                key={i} 
-                                className={`w-4 h-4 ${i < Math.floor(item.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}`} 
+                              <Star
+                                key={i}
+                                className={`w-4 h-4 ${
+                                  i < Math.floor(item.rating)
+                                    ? "fill-yellow-400 text-yellow-400"
+                                    : "text-gray-200"
+                                }`}
                               />
                             ))}
                           </div>
-                          <span className="text-sm text-gray-600">({item.reviews} reviews)</span>
+                          <span className="text-sm text-gray-600">
+                            ({item.reviews} reviews)
+                          </span>
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-500">Available colors:</span>
+                          <span className="text-sm text-gray-500">
+                            Available colors:
+                          </span>
                           <div className="flex gap-1">
                             {item.colors.map((color, index) => (
                               <div
@@ -304,9 +353,13 @@ export const WishlistPage = () => {
 
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <span className="text-2xl font-bold text-gray-900">${item.price}</span>
+                            <span className="text-2xl font-bold text-gray-900">
+                              ${item.price}
+                            </span>
                             {item.originalPrice && (
-                              <span className="text-lg text-gray-400 line-through">${item.originalPrice}</span>
+                              <span className="text-lg text-gray-400 line-through">
+                                ${item.originalPrice}
+                              </span>
                             )}
                           </div>
 
@@ -325,8 +378,8 @@ export const WishlistPage = () => {
                               onClick={() => handleAddToCompare(item)}
                               className={`w-10 h-10 rounded-full ${
                                 isInCompare(item.product_id)
-                                  ? 'bg-blue-50 border-blue-200 text-blue-600'
-                                  : 'hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600'
+                                  ? "bg-blue-50 border-blue-200 text-blue-600"
+                                  : "hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600"
                               }`}
                             >
                               <BarChart3 className="w-4 h-4" />
@@ -337,7 +390,7 @@ export const WishlistPage = () => {
                               className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-semibold px-6 py-2 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <ShoppingBag className="w-4 h-4 mr-2" />
-                              {item.inStock ? 'Add to Cart' : 'Out of Stock'}
+                              {item.inStock ? "Add to Cart" : "Out of Stock"}
                             </Button>
                           </div>
                         </div>
