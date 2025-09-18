@@ -1,5 +1,11 @@
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "../ui/dialog";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight } from "lucide-react";
@@ -11,13 +17,13 @@ export const AuthModal = ({ isOpen, onClose }) => {
     name: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
 
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -32,7 +38,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
       name: "",
       email: "",
       password: "",
-      confirmPassword: ""
+      confirmPassword: "",
     });
   };
 
@@ -49,18 +55,19 @@ export const AuthModal = ({ isOpen, onClose }) => {
             {isSignUp ? "Join OLOSSIA" : "Welcome Back"}
           </DialogTitle>
           <DialogDescription className="text-center">
-            {isSignUp 
-              ? "Create your account to start your fashion journey" 
-              : "Sign in to access your personalized shopping experience"
-            }
+            {isSignUp
+              ? "Create your account to start your fashion journey"
+              : "Sign in to access your personalized shopping experience"}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-2">
           {/* Name field for sign up */}
           {isSignUp && (
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Full Name</label>
+              <label className="text-sm font-medium text-gray-700">
+                Full Name
+              </label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
@@ -78,7 +85,9 @@ export const AuthModal = ({ isOpen, onClose }) => {
 
           {/* Email field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Email Address</label>
+            <label className="text-sm font-medium text-gray-700">
+              Email Address
+            </label>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <Input
@@ -95,7 +104,9 @@ export const AuthModal = ({ isOpen, onClose }) => {
 
           {/* Password field */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Password</label>
+            <label className="text-sm font-medium text-gray-700">
+              Password
+            </label>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <Input
@@ -112,7 +123,11 @@ export const AuthModal = ({ isOpen, onClose }) => {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                {showPassword ? (
+                  <EyeOff className="w-5 h-5" />
+                ) : (
+                  <Eye className="w-5 h-5" />
+                )}
               </button>
             </div>
           </div>
@@ -120,7 +135,9 @@ export const AuthModal = ({ isOpen, onClose }) => {
           {/* Confirm password for sign up */}
           {isSignUp && (
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Confirm Password</label>
+              <label className="text-sm font-medium text-gray-700">
+                Confirm Password
+              </label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
@@ -162,11 +179,17 @@ export const AuthModal = ({ isOpen, onClose }) => {
           {isSignUp && (
             <p className="text-xs text-gray-500 text-center leading-relaxed">
               By creating an account, you agree to our{" "}
-              <Button variant="ghost" className="text-purple-600 hover:text-purple-700 p-0 h-auto text-xs underline">
+              <Button
+                variant="ghost"
+                className="text-purple-600 hover:text-purple-700 p-0 h-auto text-xs underline"
+              >
                 Terms of Service
               </Button>{" "}
               and{" "}
-              <Button variant="ghost" className="text-purple-600 hover:text-purple-700 p-0 h-auto text-xs underline">
+              <Button
+                variant="ghost"
+                className="text-purple-600 hover:text-purple-700 p-0 h-auto text-xs underline"
+              >
                 Privacy Policy
               </Button>
             </p>
@@ -190,7 +213,11 @@ export const AuthModal = ({ isOpen, onClose }) => {
             variant="outline"
             className="w-full py-3 rounded-xl border-2 hover:bg-gray-50 transition-all duration-200"
           >
-            <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" className="w-5 h-5 mr-3" />
+            <img
+              src="https://developers.google.com/identity/images/g-logo.png"
+              alt="Google"
+              className="w-5 h-5 mr-3"
+            />
             Continue with Google
           </Button>
           <Button

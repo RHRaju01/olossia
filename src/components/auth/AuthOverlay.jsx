@@ -167,7 +167,7 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
         <Card className="border-0 shadow-2xl rounded-3xl overflow-hidden bg-white">
           <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white text-center py-8">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-2xl font-bold">
+              <CardTitle className="text-2xl font-bold mx-auto">
                 {isSignUp ? "Join OLOSSIA" : "Welcome Back"}
               </CardTitle>
               <Button
@@ -194,12 +194,12 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-3">
               {/* Name fields for sign up */}
               {isSignUp && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-700">
+                    <label className="text-sm font-medium text-gray-700">
                       First Name
                     </label>
                     <div className="relative">
@@ -217,7 +217,7 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-700">
+                    <label className="text-sm font-medium text-gray-700">
                       Last Name
                     </label>
                     <Input
@@ -235,7 +235,7 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
 
               {/* Email field */}
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">
+                <label className="text-sm font-medium text-gray-700">
                   Email Address
                 </label>
                 <div className="relative">
@@ -254,7 +254,7 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
 
               {/* Password field */}
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">
+                <label className="text-sm font-medium text-gray-700">
                   Password
                 </label>
                 <div className="relative">
@@ -319,7 +319,7 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
               {/* Confirm password for sign up */}
               {isSignUp && (
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">
+                  <label className="text-sm font-medium text-gray-700">
                     Confirm Password
                   </label>
                   <div className="relative">
