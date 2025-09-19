@@ -198,18 +198,6 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
               )}
             </div>
 
-            {/* User button */}
-            <div className="relative hidden sm:block z-50">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full hover:bg-gray-100"
-                onClick={handleUserClick}
-              >
-                <User className="w-5 h-5" />
-              </Button>
-            </div>
-
             {/* Wishlist button with dropdown */}
             <div className="relative hidden sm:block wishlist-dropdown-container z-50">
               <Button
@@ -286,6 +274,17 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                   onClose={() => setIsCartOpen(false)}
                 />
               )}
+            </div>
+            {/* User button */}
+            <div className="relative hidden sm:block z-50">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full hover:bg-gray-100"
+                onClick={handleUserClick}
+              >
+                <User className="w-5 h-5" />
+              </Button>
             </div>
 
             {/* Mobile menu button */}
