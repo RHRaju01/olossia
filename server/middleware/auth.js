@@ -1,46 +1,45 @@
-import { verifyToken } from '../config/auth.js';
-import { supabase } from '../config/supabase.js';
+import { verifyAccessToken } from "../utils/jwt.js";
+import { User } from "../models/User.js";
 
 // Authentication middleware
 export const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Access token required' 
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        message: "Access token required",
       });
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    
-    // Get user from database
-    const { data, error } = await supabase
-      .from('users')
-      .select(`
-        id, email, first_name, last_name, status,
-        roles!inner(name)
-      `)
-      .eq('id', decoded.userId)
-      .eq('status', 'active')
-      .single();
-    
-    if (error || !data) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Invalid token or user not found' 
-      });
+    const decoded = verifyAccessToken(token);
+
+    // Load user via model (works with pg pool or supabase client)
+    const user = await User.findById(
+      decoded.sub || decoded.id || decoded.userId
+    );
+    if (!user || user.status !== "active") {
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid token or user not found" });
     }
 
-    req.user = { ...data, role: data.roles.name };
+    req.user = {
+      id: user.id,
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      role: user.role || null,
+      status: user.status,
+    };
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Invalid or expired token' 
+    console.error("Authentication error:", error);
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired token",
     });
   }
 };
@@ -49,16 +48,16 @@ export const authenticate = async (req, res, next) => {
 export const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Authentication required' 
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
       });
     }
 
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Insufficient permissions' 
+      return res.status(403).json({
+        success: false,
+        message: "Insufficient permissions",
       });
     }
 
@@ -70,26 +69,25 @@ export const authorize = (...roles) => {
 export const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.substring(7);
-      const decoded = verifyToken(token);
-      
-      const { data, error } = await supabase
-        .from('users')
-        .select(`
-          id, email, first_name, last_name, status,
-          roles!inner(name)
-        `)
-        .eq('id', decoded.userId)
-        .eq('status', 'active')
-        .single();
-      
-      if (!error && data) {
-        req.user = { ...data, role: data.roles.name };
+      const decoded = verifyAccessToken(token);
+      const user = await User.findById(
+        decoded.sub || decoded.id || decoded.userId
+      );
+      if (user && user.status === "active") {
+        req.user = {
+          id: user.id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          role: user.role || null,
+          status: user.status,
+        };
       }
     }
-    
+
     next();
   } catch (error) {
     // Continue without authentication for optional auth

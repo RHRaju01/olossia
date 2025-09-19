@@ -165,7 +165,27 @@ CREATE POLICY "Roles are readable by authenticated users"
   TO authenticated
   USING (true);
 
+-- ============================================
+-- Authentication: Refresh tokens table
+-- Created: 2025-09-20
+-- Purpose: store refresh token hashes for rotation/revocation
+-- ============================================
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash text NOT NULL, -- store HMAC-SHA256(token, PEPPER)
+  ip_address inet,
+  user_agent text,
+  is_revoked boolean DEFAULT false,
+  created_at timestamptz DEFAULT now(),
+  last_used_at timestamptz,
+  expires_at timestamptz NOT NULL,
+  UNIQUE(user_id, token_hash)
+);
 
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_is_revoked ON refresh_tokens(is_revoked);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
 
 
 /*

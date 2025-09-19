@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 *.bolt
+
+# Ignore server environment files
+server/.env

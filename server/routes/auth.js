@@ -15,10 +15,13 @@ router.use(authLimiter);
 // Public routes
 router.post("/register", validateRegistration, authController.register);
 router.post("/login", validateLogin, authController.login);
+router.post("/send-verify", authController.sendVerificationEmail);
 
 // Protected routes
 router.get("/profile", authenticate, authController.getProfile);
-router.post("/logout", authenticate, authController.logout);
+// Allow logout to be called with a refresh token only (no access token required)
+router.post("/logout", authController.logout);
 router.post("/refresh", authController.refresh);
+router.get("/verify", authController.verifyEmail);
 
 export default router;

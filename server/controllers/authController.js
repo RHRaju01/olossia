@@ -1,11 +1,9 @@
 import { User } from "../../server/models/User.js";
-import {
-  hashPassword,
-  comparePassword,
-  generateToken,
-  generateRefreshToken,
-} from "../config/auth.js";
-import jwt from "jsonwebtoken";
+import RefreshToken from "../../server/models/RefreshToken.js";
+import { hashPassword, verifyPassword } from "../utils/encryption.js";
+import { signAccessToken } from "../utils/jwt.js";
+import { signEmailToken, verifyEmailToken } from "../utils/verifyEmail.js";
+import { sendMail } from "../utils/mailer.js";
 
 export const authController = {
   // Register new user
@@ -33,9 +31,40 @@ export const authController = {
         lastName,
       });
 
-      // Generate tokens
-      const token = generateToken({ userId: user.id, email: user.email });
-      const refreshToken = generateRefreshToken({ userId: user.id });
+      // Create access token
+      const token = signAccessToken({
+        id: user.id,
+        role: user.role || "customer",
+      });
+
+      // Create opaque refresh token (stored hashed in DB)
+      const { token: refreshTokenPlain } = await RefreshToken.create({
+        userId: user.id,
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || null,
+      });
+
+      // Optionally auto-verify new users (development convenience)
+      if (process.env.AUTO_VERIFY_NEW_USERS === "true") {
+        await User.setEmailVerified(user.id, true);
+      } else {
+        // Send verification email
+        try {
+          const token = signEmailToken({ sub: user.id });
+          const url = `${
+            process.env.FRONTEND_URL || "http://localhost:5173"
+          }/verify-email?token=${token}`;
+          const { previewUrl } = await sendMail({
+            to: user.email,
+            subject: "Verify your email",
+            html: `<p>Please verify your email by clicking <a href="${url}">here</a></p>`,
+            text: `Verify: ${url}`,
+          });
+          if (previewUrl) console.log("Email preview URL:", previewUrl);
+        } catch (e) {
+          console.warn("Failed to send verification email:", e.message || e);
+        }
+      }
 
       res.status(201).json({
         success: true,
@@ -48,7 +77,7 @@ export const authController = {
             lastName: user.last_name,
           },
           token,
-          refreshToken,
+          refreshToken: refreshTokenPlain,
         },
       });
     } catch (error) {
@@ -83,7 +112,7 @@ export const authController = {
       }
 
       // Verify password
-      const isValidPassword = await comparePassword(
+      const isValidPassword = await verifyPassword(
         password,
         user.password_hash
       );
@@ -97,9 +126,18 @@ export const authController = {
       // Update last login
       await User.updateLastLogin(user.id);
 
-      // Generate tokens
-      const token = generateToken({ userId: user.id, email: user.email });
-      const refreshToken = generateRefreshToken({ userId: user.id });
+      // Generate access token
+      const token = signAccessToken({
+        id: user.id,
+        role: user.role || "customer",
+      });
+
+      // Create and store opaque refresh token
+      const { token: refreshTokenPlain } = await RefreshToken.create({
+        userId: user.id,
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || null,
+      });
 
       res.json({
         success: true,
@@ -113,7 +151,7 @@ export const authController = {
             role: user.role,
           },
           token,
-          refreshToken,
+          refreshToken: refreshTokenPlain,
         },
       });
     } catch (error) {
@@ -162,10 +200,82 @@ export const authController = {
 
   // Logout (client-side token removal)
   logout: async (req, res) => {
-    res.json({
-      success: true,
-      message: "Logged out successfully",
-    });
+    try {
+      const { refreshToken } = req.body;
+      if (refreshToken) {
+        const row = await RefreshToken.findByToken(refreshToken);
+        if (row) await RefreshToken.revokeById(row.id);
+      }
+      return res.json({ success: true, message: "Logged out successfully" });
+    } catch (err) {
+      console.error("Logout error:", err);
+      return res.status(500).json({ success: false, message: "Logout failed" });
+    }
+  },
+
+  // Trigger sending a verification email for the logged-in user (or by email)
+  sendVerificationEmail: async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email)
+        return res
+          .status(400)
+          .json({ success: false, message: "Email required" });
+      const user = await User.findByEmail(email);
+      if (!user)
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+
+      const token = signEmailToken({ sub: user.id });
+      const url = `${
+        process.env.FRONTEND_URL || "http://localhost:5173"
+      }/verify-email?token=${token}`;
+      const { previewUrl } = await sendMail({
+        to: user.email,
+        subject: "Verify email",
+        html: `<p>Click <a href="${url}">here</a></p>`,
+        text: url,
+      });
+      return res.json({
+        success: true,
+        message: "Verification email sent",
+        previewUrl,
+      });
+    } catch (err) {
+      console.error("sendVerificationEmail error:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Failed to send verification email" });
+    }
+  },
+
+  // Verify email via token
+  verifyEmail: async (req, res) => {
+    try {
+      const { token } = req.query;
+      if (!token)
+        return res
+          .status(400)
+          .json({ success: false, message: "Token required" });
+      const payload = verifyEmailToken(token);
+      if (!payload)
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid or expired token" });
+      const userId = payload.sub;
+      const updated = await User.setEmailVerified(userId, true);
+      if (!updated)
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      return res.json({ success: true, message: "Email verified" });
+    } catch (err) {
+      console.error("verifyEmail error:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Failed to verify email" });
+    }
   },
 
   // Refresh token
@@ -174,41 +284,58 @@ export const authController = {
       const { refreshToken } = req.body;
 
       if (!refreshToken) {
-        return res.status(400).json({
-          success: false,
-          message: "Refresh token is required",
-        });
+        return res
+          .status(400)
+          .json({ success: false, message: "Refresh token is required" });
       }
 
-      // Verify refresh token
-      const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+      // Find stored token by comparing hashes
+      const row = await RefreshToken.findByToken(refreshToken);
+      if (!row)
+        return res
+          .status(401)
+          .json({ success: false, message: "Invalid refresh token" });
 
-      // Find user
-      const user = await User.findById(decoded.userId);
-      if (!user) {
+      // Check revoked or expired
+      if (row.is_revoked || new Date(row.expires_at) < new Date()) {
         return res.status(401).json({
           success: false,
-          message: "Invalid refresh token",
+          message: "Refresh token revoked or expired",
         });
       }
 
-      // Generate new tokens
-      const token = generateToken({ userId: user.id, email: user.email });
-      const newRefreshToken = generateRefreshToken({ userId: user.id });
+      // Load user
+      const user = await User.findById(row.user_id);
+      if (!user)
+        return res
+          .status(401)
+          .json({ success: false, message: "Invalid refresh token" });
+
+      // Revoke the used refresh token (rotation)
+      await RefreshToken.revokeById(row.id);
+
+      // Create a new refresh token
+      const { token: newRefreshPlain } = await RefreshToken.create({
+        userId: user.id,
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || null,
+      });
+
+      // Issue new access token
+      const token = signAccessToken({
+        id: user.id,
+        role: user.role || "customer",
+      });
 
       res.json({
         success: true,
-        data: {
-          token,
-          refreshToken: newRefreshToken,
-        },
+        data: { token, refreshToken: newRefreshPlain },
       });
     } catch (error) {
       console.error("Token refresh error:", error);
-      res.status(401).json({
-        success: false,
-        message: "Invalid refresh token",
-      });
+      res
+        .status(401)
+        .json({ success: false, message: "Invalid refresh token" });
     }
   },
 };
