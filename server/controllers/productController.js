@@ -1,4 +1,4 @@
-import { Product } from '../models/Product.js';
+import { Product } from "../../server/models/Product.js";
 
 export const productController = {
   // Get all products with filtering
@@ -12,11 +12,11 @@ export const productController = {
         minPrice,
         maxPrice,
         search,
-        sort = 'newest'
+        sort = "newest",
       } = req.query;
 
       const offset = (page - 1) * limit;
-      
+
       const filters = {
         limit: parseInt(limit),
         offset: parseInt(offset),
@@ -24,7 +24,7 @@ export const productController = {
         brandId: brand,
         minPrice: minPrice ? parseFloat(minPrice) : null,
         maxPrice: maxPrice ? parseFloat(maxPrice) : null,
-        search
+        search,
       };
 
       const products = await Product.getAll(filters);
@@ -36,15 +36,15 @@ export const productController = {
           pagination: {
             page: parseInt(page),
             limit: parseInt(limit),
-            hasMore: products.length === parseInt(limit)
-          }
-        }
+            hasMore: products.length === parseInt(limit),
+          },
+        },
       });
     } catch (error) {
-      console.error('Get products error:', error);
+      console.error("Get products error:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to fetch products'
+        message: "Failed to fetch products",
       });
     }
   },
@@ -58,19 +58,19 @@ export const productController = {
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: 'Product not found'
+          message: "Product not found",
         });
       }
 
       res.json({
         success: true,
-        data: { product }
+        data: { product },
       });
     } catch (error) {
-      console.error('Get product error:', error);
+      console.error("Get product error:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to fetch product'
+        message: "Failed to fetch product",
       });
     }
   },
@@ -83,13 +83,13 @@ export const productController = {
 
       res.json({
         success: true,
-        data: { products }
+        data: { products },
       });
     } catch (error) {
-      console.error('Get featured products error:', error);
+      console.error("Get featured products error:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to fetch featured products'
+        message: "Failed to fetch featured products",
       });
     }
   },
@@ -99,22 +99,22 @@ export const productController = {
     try {
       const productData = {
         ...req.body,
-        sellerId: req.user.role === 'seller' ? req.user.id : null
+        sellerId: req.user.role === "seller" ? req.user.id : null,
       };
 
       const product = await Product.create(productData);
 
       res.status(201).json({
         success: true,
-        message: 'Product created successfully',
-        data: { product }
+        message: "Product created successfully",
+        data: { product },
       });
     } catch (error) {
-      console.error('Create product error:', error);
+      console.error("Create product error:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to create product'
+        message: "Failed to create product",
       });
     }
-  }
+  },
 };

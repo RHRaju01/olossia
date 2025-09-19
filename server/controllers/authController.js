@@ -1,6 +1,11 @@
-import { User } from '../models/User.js';
-import { hashPassword, comparePassword, generateToken, generateRefreshToken } from '../config/auth.js';
-import jwt from 'jsonwebtoken';
+import { User } from "../../server/models/User.js";
+import {
+  hashPassword,
+  comparePassword,
+  generateToken,
+  generateRefreshToken,
+} from "../config/auth.js";
+import jwt from "jsonwebtoken";
 
 export const authController = {
   // Register new user
@@ -13,7 +18,7 @@ export const authController = {
       if (existingUser) {
         return res.status(409).json({
           success: false,
-          message: 'User with this email already exists'
+          message: "User with this email already exists",
         });
       }
 
@@ -25,7 +30,7 @@ export const authController = {
         email,
         password: hashedPassword,
         firstName,
-        lastName
+        lastName,
       });
 
       // Generate tokens
@@ -34,23 +39,23 @@ export const authController = {
 
       res.status(201).json({
         success: true,
-        message: 'User registered successfully',
+        message: "User registered successfully",
         data: {
           user: {
             id: user.id,
             email: user.email,
             firstName: user.first_name,
-            lastName: user.last_name
+            lastName: user.last_name,
           },
           token,
-          refreshToken
-        }
+          refreshToken,
+        },
       });
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error("Registration error:", error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error during registration'
+        message: "Internal server error during registration",
       });
     }
   },
@@ -65,24 +70,27 @@ export const authController = {
       if (!user) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid email or password'
+          message: "Invalid email or password",
         });
       }
 
       // Check if user is active
-      if (user.status !== 'active') {
+      if (user.status !== "active") {
         return res.status(401).json({
           success: false,
-          message: 'Account is not active'
+          message: "Account is not active",
         });
       }
 
       // Verify password
-      const isValidPassword = await comparePassword(password, user.password_hash);
+      const isValidPassword = await comparePassword(
+        password,
+        user.password_hash
+      );
       if (!isValidPassword) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid email or password'
+          message: "Invalid email or password",
         });
       }
 
@@ -95,24 +103,24 @@ export const authController = {
 
       res.json({
         success: true,
-        message: 'Login successful',
+        message: "Login successful",
         data: {
           user: {
             id: user.id,
             email: user.email,
             firstName: user.first_name,
             lastName: user.last_name,
-            role: user.role
+            role: user.role,
           },
           token,
-          refreshToken
-        }
+          refreshToken,
+        },
       });
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error during login'
+        message: "Internal server error during login",
       });
     }
   },
@@ -121,11 +129,11 @@ export const authController = {
   getProfile: async (req, res) => {
     try {
       const user = await User.findById(req.user.id);
-      
+
       if (!user) {
         return res.status(404).json({
           success: false,
-          message: 'User not found'
+          message: "User not found",
         });
       }
 
@@ -139,15 +147,15 @@ export const authController = {
             lastName: user.last_name,
             role: user.role,
             status: user.status,
-            createdAt: user.created_at
-          }
-        }
+            createdAt: user.created_at,
+          },
+        },
       });
     } catch (error) {
-      console.error('Get profile error:', error);
+      console.error("Get profile error:", error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: "Internal server error",
       });
     }
   },
@@ -156,7 +164,7 @@ export const authController = {
   logout: async (req, res) => {
     res.json({
       success: true,
-      message: 'Logged out successfully'
+      message: "Logged out successfully",
     });
   },
 
@@ -168,19 +176,19 @@ export const authController = {
       if (!refreshToken) {
         return res.status(400).json({
           success: false,
-          message: 'Refresh token is required'
+          message: "Refresh token is required",
         });
       }
 
       // Verify refresh token
       const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-      
+
       // Find user
       const user = await User.findById(decoded.userId);
       if (!user) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid refresh token'
+          message: "Invalid refresh token",
         });
       }
 
@@ -192,15 +200,15 @@ export const authController = {
         success: true,
         data: {
           token,
-          refreshToken: newRefreshToken
-        }
+          refreshToken: newRefreshToken,
+        },
       });
     } catch (error) {
-      console.error('Token refresh error:', error);
+      console.error("Token refresh error:", error);
       res.status(401).json({
         success: false,
-        message: 'Invalid refresh token'
+        message: "Invalid refresh token",
       });
     }
-  }
+  },
 };
