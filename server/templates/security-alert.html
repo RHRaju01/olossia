@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Security alert</title>
+    <style>
+      body {
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto,
+          sans-serif;
+        color: #111827;
+      }
+      .container {
+        max-width: 640px;
+        margin: 32px auto;
+        padding: 24px;
+      }
+      .brand {
+        font-weight: 700;
+        background: linear-gradient(90deg, #7c3aed, #ec4899);
+        -webkit-background-clip: text;
+        color: transparent;
+        font-size: 24px;
+      }
+      .muted {
+        color: #6b7280;
+      }
+      .notice {
+        border-left: 4px solid #ef4444;
+        padding: 12px;
+        background: #fff7f7;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="brand">Olossia</div>
+      <h2>Security alert: Refresh token reuse detected</h2>
+      <div class="notice">
+        <p class="muted">
+          We detected that a recently used refresh token for your account was
+          reused. As a precaution, we've revoked all active refresh sessions. If
+          this wasn't you, please reset your password immediately.
+        </p>
+      </div>
+      <p class="muted">Details:</p>
+      <ul>
+        <li>When: {{when}}</li>
+        <li>IP: {{ip}}</li>
+        <li>User agent: {{ua}}</li>
+      </ul>
+      <p class="muted">If you need help, contact support.</p>
+    </div>
+  </body>
+</html>

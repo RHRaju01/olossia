@@ -4,6 +4,9 @@ import { startServer } from "../../server.js";
 
 let server;
 
+// Increase Jest timeout for slow CI/dev environments (server startup, network)
+jest.setTimeout(30000);
+
 beforeAll(async () => {
   // Ensure env defaults for testing
   process.env.REFRESH_TOKEN_PEPPER =
@@ -52,6 +55,17 @@ describe("Auth integration", () => {
     expect(login.body.success).toBe(true);
     const loginRefresh = login.body.data.refreshToken;
     expect(loginRefresh).toBeTruthy();
+    // assert HttpOnly refresh cookie is set on login
+    const loginSetCookie =
+      login.header["set-cookie"] || login.headers["set-cookie"];
+    expect(loginSetCookie).toBeDefined();
+    const cookieJoined = Array.isArray(loginSetCookie)
+      ? loginSetCookie.join(";")
+      : String(loginSetCookie);
+    expect(cookieJoined).toMatch(
+      new RegExp(`${process.env.REFRESH_COOKIE_NAME || "refreshToken"}=`)
+    );
+    expect(cookieJoined.toLowerCase()).toContain("httponly");
 
     // refresh
     const ref = await request(app)
@@ -61,6 +75,16 @@ describe("Auth integration", () => {
     expect(ref.body.success).toBe(true);
     const newRefresh = ref.body.data.refreshToken;
     expect(newRefresh).toBeTruthy();
+    // assert HttpOnly refresh cookie is set on refresh rotation
+    const refSetCookie = ref.header["set-cookie"] || ref.headers["set-cookie"];
+    expect(refSetCookie).toBeDefined();
+    const refCookieJoined = Array.isArray(refSetCookie)
+      ? refSetCookie.join(";")
+      : String(refSetCookie);
+    expect(refCookieJoined).toMatch(
+      new RegExp(`${process.env.REFRESH_COOKIE_NAME || "refreshToken"}=`)
+    );
+    expect(refCookieJoined.toLowerCase()).toContain("httponly");
 
     // logout
     const lo = await request(app)

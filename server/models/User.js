@@ -216,6 +216,33 @@ export class User {
       return data || null;
     }
   }
+
+  static async updatePassword(id, hashedPassword) {
+    if (DATABASE_TYPE === "postgresql") {
+      const client = await pool.connect();
+      try {
+        const result = await client.query(
+          `UPDATE public.users SET password_hash = $1, updated_at = now() WHERE id = $2 RETURNING id, email`,
+          [hashedPassword, id]
+        );
+        return result.rows[0] || null;
+      } finally {
+        client.release();
+      }
+    } else {
+      const { data, error } = await pool
+        .from("users")
+        .update({
+          password_hash: hashedPassword,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .select("id, email")
+        .maybeSingle();
+      if (error) throw error;
+      return data || null;
+    }
+  }
 }
 
 export default User;

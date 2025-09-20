@@ -1,0 +1,9 @@
+Security alert: Refresh token reuse detected
+
+We detected that a recently used refresh token for your account was reused. As a precaution, we've revoked all active refresh sessions. If this wasn't you, please reset your password immediately.
+
+When: {{when}}
+IP: {{ip}}
+User agent: {{ua}}
+
+If you need help, contact support.

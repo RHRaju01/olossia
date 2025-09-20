@@ -5,6 +5,7 @@ A scalable, enterprise-grade fashion e-commerce platform built with React, Node.
 ## 🏗️ Architecture Overview
 
 ### Frontend (React + Vite)
+
 - **Framework**: React 18 with Vite for fast development
 - **Routing**: React Router v6 with protected routes
 - **State Management**: Context API with useReducer for complex state
@@ -14,6 +15,7 @@ A scalable, enterprise-grade fashion e-commerce platform built with React, Node.
 - **Performance**: Lazy loading, memoization, and code splitting
 
 ### Backend (Node.js + Express)
+
 - **Framework**: Express.js with modular architecture
 - **Database**: Flexible support for Supabase or PostgreSQL
 - **Authentication**: JWT with refresh tokens
@@ -112,7 +114,8 @@ A scalable, enterprise-grade fashion e-commerce platform built with React, Node.
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - PostgreSQL 14+ (if using local database)
 - Supabase account (if using Supabase)
 - npm or yarn
@@ -134,12 +137,14 @@ DATABASE_TYPE=postgresql
 ### Backend Setup
 
 1. **Navigate to server directory**:
+
    ```bash
    cd server
    npm install
    ```
 
 2. **Environment Configuration**:
+
    ```bash
    cp .env.example .env
    # Edit .env with your database credentials
@@ -148,15 +153,17 @@ DATABASE_TYPE=postgresql
 3. **Database Setup**:
 
    **For Supabase:**
+
    - Set up your Supabase project
    - Add your Supabase URL and keys to `.env`
    - Database schema is automatically applied
 
    **For Local PostgreSQL:**
+
    ```bash
    # Create PostgreSQL database
    createdb olossia_db
-   
+
    # Run the schema (convert from Supabase migration)
    psql -d olossia_db -f supabase/migrations/20250903023457_empty_harbor.sql
    ```
@@ -169,11 +176,13 @@ DATABASE_TYPE=postgresql
 ### Frontend Setup
 
 1. **Install dependencies**:
+
    ```bash
    npm install
    ```
 
 2. **Environment Configuration**:
+
    ```bash
    cp .env.example .env
    # Configure API URL and other settings
@@ -187,17 +196,20 @@ DATABASE_TYPE=postgresql
 ## 🔐 Authentication & Authorization
 
 ### User Roles
+
 - **Admin**: Full system access, user management, analytics
 - **Seller**: Product management, order viewing, inventory control
 - **Customer**: Shopping, order history, profile management
 
 ### JWT Implementation
+
 - Access tokens (7 days) for API authentication
 - Refresh tokens (30 days) for seamless token renewal
 - Automatic token refresh on API calls
 - Secure token storage in localStorage
 
 ### Route Protection
+
 ```jsx
 // Protect routes by role
 <ProtectedRoute roles={['admin']}>
@@ -213,6 +225,7 @@ DATABASE_TYPE=postgresql
 ## 🗄️ Database Flexibility
 
 ### Dual Database Support
+
 The application supports both **Supabase** and **local PostgreSQL** with a single configuration change:
 
 ```env
@@ -223,11 +236,13 @@ DATABASE_TYPE=postgresql  # Use local PostgreSQL
 ```
 
 ### Database Models
+
 - **User.js**: Handles user operations for both databases
 - **Product.js**: Manages product data with database abstraction
 - **Database.js**: Provides unified interface for both database types
 
 ### Migration Strategy
+
 - Supabase migrations in `supabase/migrations/`
 - PostgreSQL schema can be generated from Supabase migrations
 - Consistent data models across both platforms
@@ -235,14 +250,25 @@ DATABASE_TYPE=postgresql  # Use local PostgreSQL
 ## 🛡️ Security Features
 
 ### Backend Security
+
 - **Helmet**: Security headers
 - **Rate Limiting**: API abuse prevention
 - **Input Validation**: Express-validator for data sanitization
 - **CORS**: Configured for specific origins
-- **Password Hashing**: bcrypt with salt rounds
+- **Password Hashing**: Argon2id (recommended)
+
+We use Argon2id for password hashing (via the `argon2` package). Tunable environment variables:
+
+- `ARGON_MEMORY_COST` (KiB) — default 65536 (64 MiB), lowered to 16384 in test runs for speed.
+- `ARGON_TIME_COST` — default 3, minimum 2 required by the library; tests use 2 for reliability.
+- `ARGON_PARALLELISM` — default 1.
+
+These can be overridden in CI or production via environment variables to balance security and performance.
+
 - **SQL Injection Protection**: Parameterized queries
 
 ### Frontend Security
+
 - **Token Management**: Secure storage and automatic refresh
 - **Route Protection**: Role-based access control
 - **Input Sanitization**: Client-side validation
@@ -251,6 +277,7 @@ DATABASE_TYPE=postgresql  # Use local PostgreSQL
 ## 📊 State Management
 
 ### Context Architecture
+
 ```jsx
 // Authentication state
 const { user, isAuthenticated, login, logout, hasRole } = useAuth();
@@ -266,6 +293,7 @@ const { items, addItem, removeItem, isInCompare } = useCompare();
 ```
 
 ### Performance Optimizations
+
 - **React.memo**: Memoized components to prevent unnecessary re-renders
 - **useCallback**: Memoized event handlers
 - **useMemo**: Memoized computed values
@@ -275,12 +303,14 @@ const { items, addItem, removeItem, isInCompare } = useCompare();
 ## 🔄 Development Workflow
 
 ### Code Organization
+
 - **Component-based architecture** for reusability
 - **Separation of concerns** between UI, logic, and data
 - **Custom hooks** for business logic abstraction
 - **Consistent naming conventions** and file structure
 
 ### Best Practices
+
 - TypeScript-ready architecture
 - ESLint and Prettier configuration
 - Environment-based configuration
@@ -290,6 +320,7 @@ const { items, addItem, removeItem, isInCompare } = useCompare();
 ## 🚀 Deployment Considerations
 
 ### Production Readiness
+
 - Environment variable management
 - Database connection pooling
 - Error logging and monitoring
@@ -297,6 +328,7 @@ const { items, addItem, removeItem, isInCompare } = useCompare();
 - Security hardening
 
 ### Scalability Features
+
 - Modular backend architecture
 - Stateless authentication
 - Database indexing strategy
@@ -306,6 +338,7 @@ const { items, addItem, removeItem, isInCompare } = useCompare();
 ## 🔮 Future Enhancements
 
 ### Technical Roadmap
+
 - **GraphQL API**: Replace REST for better performance
 - **Microservices**: Split into domain-specific services
 - **Redis Caching**: Session and data caching
@@ -316,6 +349,7 @@ const { items, addItem, removeItem, isInCompare } = useCompare();
 - **Analytics**: User behavior tracking and business intelligence
 
 ### Business Features
+
 - Multi-vendor marketplace
 - Subscription services
 - Loyalty programs
@@ -326,6 +360,7 @@ const { items, addItem, removeItem, isInCompare } = useCompare();
 ## 📝 API Documentation
 
 ### Authentication Endpoints
+
 ```
 POST /api/v1/auth/register    # User registration
 POST /api/v1/auth/login       # User login
@@ -335,6 +370,7 @@ POST /api/v1/auth/refresh     # Refresh access token
 ```
 
 ### Product Endpoints
+
 ```
 GET    /api/v1/products           # Get products with filters
 GET    /api/v1/products/:id       # Get single product
@@ -349,6 +385,7 @@ DELETE /api/v1/products/:id       # Delete product (admin)
 ### Environment Variables
 
 **Frontend (.env):**
+
 ```env
 VITE_API_URL=http://localhost:5000/api/v1
 VITE_APP_NAME=Olossia
@@ -357,6 +394,7 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 **Backend (server/.env):**
+
 ```env
 # Database Configuration
 DATABASE_TYPE=supabase  # or 'postgresql'
@@ -381,12 +419,14 @@ JWT_REFRESH_SECRET=your-refresh-secret
 ## 🎯 Key Features
 
 ### User Experience
+
 - **Responsive Design**: Mobile-first approach with desktop enhancements
 - **Progressive Web App**: Fast loading and offline capabilities
 - **Accessibility**: WCAG 2.1 compliant
 - **Performance**: Optimized for Core Web Vitals
 
 ### Shopping Features
+
 - **Product Catalog**: Advanced filtering and search
 - **Wishlist**: Save items for later
 - **Product Comparison**: Side-by-side feature comparison
@@ -395,6 +435,7 @@ JWT_REFRESH_SECRET=your-refresh-secret
 - **Live Shopping**: Real-time shopping events
 
 ### Admin Features
+
 - **Dashboard**: Comprehensive analytics and management
 - **Product Management**: CRUD operations for products
 - **User Management**: Role-based user administration

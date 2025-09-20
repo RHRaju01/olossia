@@ -30,14 +30,36 @@ export async function createTransporter() {
   });
 }
 
-export async function sendMail({ to, subject, html, text }) {
+import { renderTemplate } from "./emailTemplates.js";
+
+export async function sendMail({
+  to,
+  subject,
+  html,
+  text,
+  template,
+  templateData,
+  preferHtml = true,
+}) {
+  // If a template name is provided, render it. This keeps the original
+  // signature backwards-compatible: callers may still pass html/text directly.
+  let finalHtml = html;
+  let finalText = text;
+  if (template) {
+    // try html first then plaintext
+    const h = renderTemplate(template, templateData, { html: true });
+    const t = renderTemplate(template, templateData, { html: false });
+    if (h) finalHtml = h;
+    if (t) finalText = t;
+  }
+
   const transporter = await createTransporter();
   const info = await transporter.sendMail({
     from: process.env.FROM_EMAIL || "noreply@example.com",
     to,
     subject,
-    html,
-    text,
+    html: finalHtml,
+    text: finalText,
   });
 
   // Return preview URL in dev (Ethereal)

@@ -57,13 +57,34 @@ export const authController = {
           const { previewUrl } = await sendMail({
             to: user.email,
             subject: "Verify your email",
-            html: `<p>Please verify your email by clicking <a href="${url}">here</a></p>`,
-            text: `Verify: ${url}`,
+            template: "verify-email",
+            templateData: { verifyLink: url },
           });
           if (previewUrl) console.log("Email preview URL:", previewUrl);
         } catch (e) {
           console.warn("Failed to send verification email:", e.message || e);
         }
+      }
+
+      // set refresh token as HttpOnly cookie (recommended)
+      try {
+        const cookieName = process.env.REFRESH_COOKIE_NAME || "refreshToken";
+        const secureCookie =
+          process.env.FORCE_SECURE_COOKIES === "true" ||
+          process.env.NODE_ENV === "production";
+        const maxAge = parseInt(
+          process.env.REFRESH_TOKEN_COOKIE_MAX_AGE ||
+            String(1000 * 60 * 60 * 24 * 30),
+          10
+        ); // ms
+        res.cookie(cookieName, refreshTokenPlain, {
+          httpOnly: true,
+          secure: secureCookie,
+          sameSite: "lax",
+          maxAge,
+        });
+      } catch (e) {
+        console.warn("Failed to set refresh token cookie:", e.message || e);
       }
 
       res.status(201).json({
@@ -138,6 +159,27 @@ export const authController = {
         ipAddress: req.ip,
         userAgent: req.get("User-Agent") || null,
       });
+
+      // set HttpOnly refresh token cookie
+      try {
+        const cookieName = process.env.REFRESH_COOKIE_NAME || "refreshToken";
+        const secureCookie =
+          process.env.FORCE_SECURE_COOKIES === "true" ||
+          process.env.NODE_ENV === "production";
+        const maxAge = parseInt(
+          process.env.REFRESH_TOKEN_COOKIE_MAX_AGE ||
+            String(1000 * 60 * 60 * 24 * 30),
+          10
+        ); // ms
+        res.cookie(cookieName, refreshTokenPlain, {
+          httpOnly: true,
+          secure: secureCookie,
+          sameSite: "lax",
+          maxAge,
+        });
+      } catch (e) {
+        console.warn("Failed to set refresh token cookie:", e.message || e);
+      }
 
       res.json({
         success: true,
@@ -250,6 +292,129 @@ export const authController = {
     }
   },
 
+  // Request password reset (sends email with reset link). Response is generic.
+  requestPasswordReset: async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email)
+        return res
+          .status(400)
+          .json({ success: false, message: "Email required" });
+
+      const user = await User.findByEmail(email);
+      // Always respond with success to avoid user enumeration
+      if (!user)
+        return res.json({
+          success: true,
+          message:
+            "If an account with that email exists, a password reset link has been sent.",
+        });
+
+      // Sign reset token
+      const { signPasswordResetToken } = await import(
+        "../utils/passwordReset.js"
+      );
+      const token = signPasswordResetToken({ sub: user.id });
+      const url = `${
+        process.env.FRONTEND_URL || "http://localhost:5173"
+      }/reset-password?token=${token}`;
+
+      // load template and inject link. Try multiple locations to support
+      // running from repo root (process.cwd()=project root) or from
+      // the server folder (process.cwd()=server). Avoid import.meta to
+      // keep Jest/CJS transforms happy.
+      const fs = await import("fs");
+      const path = await import("path");
+      const candidates = [
+        path.resolve(
+          process.cwd(),
+          "server",
+          "templates",
+          "password-reset.html"
+        ),
+        path.resolve(process.cwd(), "templates", "password-reset.html"),
+        path.resolve(
+          process.cwd(),
+          "server",
+          "templates",
+          "password-reset.html"
+        ),
+      ];
+      let tplPath = candidates.find((p) => fs.existsSync(p));
+      if (!tplPath) {
+        // fallback to relative path inside package (best-effort)
+        tplPath = path.resolve(
+          __dirname || ".",
+          "templates",
+          "password-reset.html"
+        );
+      }
+      let html = fs.readFileSync(tplPath, "utf8");
+      html = html.replace('href="#"', `href="${url}" id="reset-link"`);
+
+      const { previewUrl } = await sendMail({
+        to: user.email,
+        subject: "Reset your password",
+        template: "password-reset",
+        templateData: { resetLink: url },
+        // fallback text in case template rendering fails in plaintext
+        text: `Reset: ${url}`,
+      });
+      return res.json({
+        success: true,
+        message:
+          "If an account with that email exists, a password reset link has been sent.",
+        previewUrl,
+      });
+    } catch (err) {
+      console.error("requestPasswordReset error:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Failed to process request" });
+    }
+  },
+
+  // Confirm password reset: verify token and update password
+  confirmPasswordReset: async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      if (!token || !newPassword)
+        return res
+          .status(400)
+          .json({ success: false, message: "Token and newPassword required" });
+
+      const { verifyPasswordResetToken } = await import(
+        "../utils/passwordReset.js"
+      );
+      const payload = verifyPasswordResetToken(token);
+      if (!payload)
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid or expired token" });
+
+      const userId = payload.sub;
+      const hashed = await hashPassword(newPassword);
+      const updated = await User.updatePassword(userId, hashed);
+      if (!updated)
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+
+      // revoke all existing refresh tokens
+      await User.revokeAllRefreshTokens(userId);
+
+      return res.json({
+        success: true,
+        message: "Password updated successfully",
+      });
+    } catch (err) {
+      console.error("confirmPasswordReset error:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Failed to reset password" });
+    }
+  },
+
   // Verify email via token
   verifyEmail: async (req, res) => {
     try {
@@ -296,20 +461,61 @@ export const authController = {
           .status(401)
           .json({ success: false, message: "Invalid refresh token" });
 
-      // Check revoked or expired
-      if (row.is_revoked || new Date(row.expires_at) < new Date()) {
+      // Check expired
+      if (new Date(row.expires_at) < new Date()) {
         return res.status(401).json({
           success: false,
-          message: "Refresh token revoked or expired",
+          message: "Refresh token expired",
         });
       }
 
-      // Load user
+      // Load user early so we can reference it when sending alerts
       const user = await User.findById(row.user_id);
       if (!user)
         return res
           .status(401)
           .json({ success: false, message: "Invalid refresh token" });
+
+      // If token is revoked, this may indicate reuse — treat as breach
+      if (row.is_revoked) {
+        try {
+          console.warn(
+            "Detected use of revoked refresh token for user:",
+            row.user_id
+          );
+          // Revoke all tokens for this user as a precaution
+          await User.revokeAllRefreshTokens(row.user_id);
+
+          // Send security alert email to the user (and admin if configured)
+          const when = new Date().toISOString();
+          const ip = req.ip;
+          const ua = req.get("User-Agent") || "";
+          await sendMail({
+            to: user.email,
+            subject: "Security alert: refresh token reuse detected",
+            template: "security-alert",
+            templateData: { when, ip, ua },
+          });
+          if (process.env.ADMIN_EMAIL) {
+            await sendMail({
+              to: process.env.ADMIN_EMAIL,
+              subject: `Security alert for user ${user.email}`,
+              template: "security-alert",
+              templateData: { when, ip, ua },
+            });
+          }
+        } catch (sendErr) {
+          console.warn(
+            "Failed to send security alert emails:",
+            sendErr.message || sendErr
+          );
+        }
+
+        return res.status(401).json({
+          success: false,
+          message: "Refresh token revoked or invalid (possible reuse)",
+        });
+      }
 
       // Revoke the used refresh token (rotation)
       await RefreshToken.revokeById(row.id);
@@ -326,6 +532,27 @@ export const authController = {
         id: user.id,
         role: user.role || "customer",
       });
+
+      // set rotated refresh token cookie
+      try {
+        const cookieName = process.env.REFRESH_COOKIE_NAME || "refreshToken";
+        const secureCookie =
+          process.env.FORCE_SECURE_COOKIES === "true" ||
+          process.env.NODE_ENV === "production";
+        const maxAge = parseInt(
+          process.env.REFRESH_TOKEN_COOKIE_MAX_AGE ||
+            String(1000 * 60 * 60 * 24 * 30),
+          10
+        ); // ms
+        res.cookie(cookieName, newRefreshPlain, {
+          httpOnly: true,
+          secure: secureCookie,
+          sameSite: "lax",
+          maxAge,
+        });
+      } catch (e) {
+        console.warn("Failed to set refresh token cookie:", e.message || e);
+      }
 
       res.json({
         success: true,

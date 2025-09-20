@@ -136,6 +136,22 @@ Restructure the existing PERN (PostgreSQL, Express, React, Node.js) application 
 - **Security features**: Password hashing, rate limiting, account lockout
 - **Session management**: Secure token storage and validation middleware
 
+### Password hashing (Argon2) — production recommendations
+
+We use Argon2id for password hashing. For production, choose conservative parameters that balance security and server capacity. Example recommended env variables for production:
+
+- ARGON_MEMORY_COST=131072 # KiB (128 MiB)
+- ARGON_TIME_COST=4 # iterations
+- ARGON_PARALLELISM=2 # threads
+
+For CI or local test runs you can use smaller settings to keep test times reasonable (these are automatically used when `NODE_ENV=test`):
+
+- ARGON_MEMORY_COST=16384 # KiB (16 MiB)
+- ARGON_TIME_COST=2
+- ARGON_PARALLELISM=1
+
+Set these in your deployment environment (e.g., as Secrets or environment variables in your host).
+
 ### 8. Multi-Brand API Integration Architecture
 
 ```javascript
