@@ -12,7 +12,7 @@ import {
   Award,
   Users,
 } from "lucide-react";
-import { SearchBar } from "../components/ui/SearchBar";
+import { SearchBar } from "../components/ui";
 import { useNavigateWithScroll } from "../utils/navigation";
 
 export const BrandsPage = () => {

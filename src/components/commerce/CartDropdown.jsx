@@ -2,11 +2,25 @@ import React, { useCallback } from "react";
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
 import { Separator } from "../ui/separator";
-import { Minus, Plus, X, ShoppingBag, ArrowRight, Heart, BarChart3 } from "lucide-react";
-import { useCart } from "../../contexts/CartContext";
+import {
+  Minus,
+  Plus,
+  X,
+  ShoppingBag,
+  ArrowRight,
+  Heart,
+  BarChart3,
+} from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { updateLocalItem, removeLocalItem } from "../../store/cartSlice";
 import { useWishlist } from "../../contexts/WishlistContext";
 import { useCompare } from "../../contexts/CompareContext";
 import { useNavigate } from "react-router-dom";
+import {
+  useGetCartQuery,
+  useUpdateItemMutation,
+  useRemoveItemMutation,
+} from "../../services/api";
 
 // Memoized cart item component
 const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
@@ -26,22 +40,30 @@ const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
             </div>
           )}
         </div>
-        
+
         <div className="flex-1 space-y-2">
           <div>
-            <p className="text-xs text-purple-600 font-bold uppercase">{item.brand}</p>
-            <h4 className="font-semibold text-gray-900 leading-tight">{item.name}</h4>
-            <p className="text-sm text-gray-500">Size: {item.size} • Color: {item.color}</p>
+            <p className="text-xs text-purple-600 font-bold uppercase">
+              {item.brand}
+            </p>
+            <h4 className="font-semibold text-gray-900 leading-tight">
+              {item.name}
+            </h4>
+            <p className="text-sm text-gray-500">
+              Size: {item.size} • Color: {item.color}
+            </p>
           </div>
-          
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="font-bold text-gray-900">${item.price}</span>
               {item.originalPrice && (
-                <span className="text-sm text-gray-400 line-through">${item.originalPrice}</span>
+                <span className="text-sm text-gray-400 line-through">
+                  ${item.originalPrice}
+                </span>
               )}
             </div>
-            
+
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2">
                 <Button
@@ -52,7 +74,9 @@ const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
                 >
                   <Minus className="w-3 h-3" />
                 </Button>
-                <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                <span className="w-8 text-center font-semibold">
+                  {item.quantity}
+                </span>
                 <Button
                   variant="outline"
                   size="icon"
@@ -62,7 +86,7 @@ const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
                   <Plus className="w-3 h-3" />
                 </Button>
               </div>
-              
+
               <Button
                 variant="outline"
                 size="icon"
@@ -79,23 +103,56 @@ const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
   );
 });
 
-CartItem.displayName = 'CartItem';
+CartItem.displayName = "CartItem";
 
 export const CartDropdown = ({ isOpen, onClose }) => {
-  const { items: cartItems, totals, updateItem, removeItem } = useCart();
+  // Prefer reading cart directly from RTK Query for this UI component.
+  const { data: cartResponse } = useGetCartQuery();
+  const [updateItemTrigger] = useUpdateItemMutation();
+  const [removeItemTrigger] = useRemoveItemMutation();
+
+  // Fallback to Redux local cart for guest users
+  const dispatch = useDispatch();
+  const ctxItems = useSelector((s) => s.cart?.localItems || []);
   const navigate = useNavigate();
 
-  const handleUpdateQuantity = useCallback(async (itemId, newQuantity) => {
-    if (newQuantity <= 0) {
-      await removeItem(itemId);
-    } else {
-      await updateItem(itemId, newQuantity);
-    }
-  }, [updateItem, removeItem]);
+  const cartItems = cartResponse?.data?.items || ctxItems || [];
 
-  const handleRemoveItem = useCallback(async (itemId) => {
-    await removeItem(itemId);
-  }, [removeItem]);
+  const handleUpdateQuantity = useCallback(
+    async (itemId, newQuantity) => {
+      if (newQuantity <= 0) {
+        try {
+          await removeItemTrigger(itemId).unwrap();
+        } catch (e) {
+          dispatch(removeLocalItem(itemId));
+        }
+      } else {
+        try {
+          await updateItemTrigger({
+            itemId,
+            update: { quantity: newQuantity },
+          }).unwrap();
+        } catch (e) {
+          // fallback to local redux cart
+          dispatch(
+            updateLocalItem({ id: itemId, changes: { quantity: newQuantity } })
+          );
+        }
+      }
+    },
+    [updateItemTrigger, removeItemTrigger]
+  );
+
+  const handleRemoveItem = useCallback(
+    async (itemId) => {
+      try {
+        await removeItemTrigger(itemId).unwrap();
+      } catch (e) {
+        dispatch(removeLocalItem(itemId));
+      }
+    },
+    [removeItemTrigger]
+  );
 
   if (!isOpen) return null;
 
@@ -138,11 +195,14 @@ export const CartDropdown = ({ isOpen, onClose }) => {
                 <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                   <ShoppingBag className="w-10 h-10 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Your cart is empty</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Your cart is empty
+                </h3>
                 <p className="text-gray-500 mb-6 max-w-sm mx-auto">
-                  Discover amazing products and add them to your cart to get started!
+                  Discover amazing products and add them to your cart to get
+                  started!
                 </p>
-                <Button 
+                <Button
                   onClick={onClose}
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-6 py-2 rounded-xl"
                 >
@@ -158,25 +218,49 @@ export const CartDropdown = ({ isOpen, onClose }) => {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotal</span>
-                  <span className="font-semibold">${totals.subtotal}</span>
+                  <span className="font-semibold">
+                    $
+                    {cartItems
+                      .reduce((s, it) => s + it.price * it.quantity, 0)
+                      .toFixed(2)}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Shipping</span>
                   <span className="font-semibold text-green-600">
-                    {totals.shipping === 0 ? 'Free' : `$${totals.shipping}`}
+                    {(() => {
+                      const subtotal = cartItems.reduce(
+                        (s, it) => s + it.price * it.quantity,
+                        0
+                      );
+                      return subtotal > 100
+                        ? "Free"
+                        : `$${subtotal > 0 ? 10 : 0}`;
+                    })()}
                   </span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total</span>
-                  <span>${totals.total}</span>
+                  <span>
+                    $
+                    {(() => {
+                      const subtotal = cartItems.reduce(
+                        (s, it) => s + it.price * it.quantity,
+                        0
+                      );
+                      const shipping =
+                        subtotal > 100 ? 0 : subtotal > 0 ? 10 : 0;
+                      return (subtotal + shipping).toFixed(2);
+                    })()}
+                  </span>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <Button 
+                <Button
                   onClick={() => {
-                    navigate('/checkout');
+                    navigate("/checkout");
                     onClose();
                   }}
                   className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 rounded-xl"
@@ -184,10 +268,10 @@ export const CartDropdown = ({ isOpen, onClose }) => {
                   Checkout
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => {
-                    navigate('/cart');
+                    navigate("/cart");
                     onClose();
                   }}
                   className="w-full rounded-xl py-3"

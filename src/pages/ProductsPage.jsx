@@ -1,7 +1,5 @@
-import React, { useState } from "react";
-import { Button } from "../components/ui/button";
-import { Card, CardContent } from "../components/ui/card";
-import { Input } from "../components/ui/input";
+import React, { useState, useCallback } from "react";
+import { Button, Card, CardContent, Input, SearchBar } from "../components/ui";
 import {
   ArrowLeft,
   Filter,
@@ -16,16 +14,32 @@ import {
   BarChart3,
   Search,
 } from "lucide-react";
-import { SearchBar } from "../components/ui/SearchBar";
-import { useCart } from "../contexts/CartContext";
+import { useSelector } from "react-redux";
+import { useAuth } from "../contexts/AuthContext";
+import { useGetCartQuery } from "../services/api";
+import { useDispatch } from "react-redux";
+import { addLocalItem } from "../store/cartSlice";
 import { useWishlist } from "../contexts/WishlistContext";
 import { useCompare } from "../contexts/CompareContext";
 import { useNavigateWithScroll } from "../utils/navigation";
 import { ProductDetailsOverlay } from "../components/commerce/ProductDetailsOverlay";
 import { ProductActions } from "../components/commerce/ProductActions";
+import { useAddItemMutation } from "../services/api";
 
 export const ProductsPage = () => {
-  const { addItem: addToCart, isInCart } = useCart();
+  const localItems = useSelector((s) => s.cart?.localItems || []);
+  const { isAuthenticated } = useAuth();
+  const { data: cartResponse } = useGetCartQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+  const serverItems = cartResponse?.data?.items || [];
+  const sourceItems = isAuthenticated ? serverItems : localItems;
+
+  const isInCart = useCallback(
+    (productId) => sourceItems.some((item) => item.product_id === productId),
+    [sourceItems]
+  );
+  const dispatch = useDispatch();
   const { addItem: addToWishlist, isInWishlist } = useWishlist();
   const { addItem: addToCompare, isInCompare } = useCompare();
   const navigate = useNavigateWithScroll();
@@ -197,8 +211,25 @@ export const ProductsPage = () => {
   const handleAddToCompare = async (product) => {
     await addToCompare(product);
   };
+  const [addItemTrigger] = useAddItemMutation();
+
   const handleAddToCart = async (product) => {
-    await addToCart(product);
+    try {
+      await addItemTrigger({ product_id: product.id, quantity: 1 }).unwrap();
+    } catch (e) {
+      // fallback to local redux guest cart
+      dispatch(
+        addLocalItem({
+          id: `local-${Date.now()}`,
+          product_id: product.id,
+          variant_id: null,
+          quantity: 1,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+        })
+      );
+    }
   };
 
   const handleViewProduct = (productId) => {

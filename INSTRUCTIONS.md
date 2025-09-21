@@ -593,7 +593,7 @@ src/
 │   │   ├── useCategories.js    # Category data
 │   │   ├── useBrands.js        # Brand data
 │   │   ├── useOrders.js        # Order data
-│   │   ├── useCart.js          # Cart management
+│   │   ├── (useCart removed)   # Cart management moved to Redux + RTK Query
 │   │   ├── useWishlist.js      # Wishlist management
 │   │   ├── useSearch.js        # Search functionality
 │   │   └── useRecommendations.js # Product recommendations
@@ -705,7 +705,7 @@ src/
 ├── contexts/                   # React contexts
 │   ├── AuthContext.jsx         # Authentication context
 │   ├── ThemeContext.jsx        # Theme context
-│   ├── CartContext.jsx         # Shopping cart context
+│   ├── (Cart context removed)  # Shopping cart is now Redux + RTK Query
 │   ├── NotificationContext.jsx # Notifications context
 │   ├── WebSocketContext.jsx    # WebSocket context
 │   └── PWAContext.jsx          # PWA context

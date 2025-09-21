@@ -73,7 +73,6 @@ A scalable, enterprise-grade fashion e-commerce platform built with React, Node.
 │   │   └── ProtectedRoute.jsx # Route protection
 │   ├── contexts/           # React contexts
 │   │   ├── AuthContext.jsx # Authentication state
-│   │   ├── CartContext.jsx # Shopping cart state
 │   │   ├── WishlistContext.jsx # Wishlist state
 │   │   └── CompareContext.jsx # Product comparison state
 │   ├── hooks/              # Custom React hooks
@@ -283,7 +282,9 @@ These can be overridden in CI or production via environment variables to balance
 const { user, isAuthenticated, login, logout, hasRole } = useAuth();
 
 // Shopping cart state
-const { items, totals, addItem, removeItem, clearCart } = useCart();
+// The project now uses Redux (`s.cart.localItems`) for guest/local cart
+// and RTK Query for server operations. Use `useSelector` to read
+// `s.cart.localItems` and dispatch `addLocalItem`/`updateLocalItem`/`removeLocalItem`.
 
 // Wishlist state
 const { items, addItem, removeItem, isInWishlist } = useWishlist();

@@ -1,15 +1,56 @@
-import React from 'react';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Separator } from '../components/ui/separator';
-import { ArrowLeft, Minus, Plus, X, ShoppingBag, Heart, Truck, Shield, Gift, ArrowRight, Star } from 'lucide-react';
-import { useCart } from '../contexts/CartContext';
-import { useWishlist } from '../contexts/WishlistContext';
-import { useAuth } from '../contexts/AuthContext';
-import { useNavigateWithScroll } from '../utils/navigation';
+import React from "react";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Separator } from "../components/ui/separator";
+import {
+  ArrowLeft,
+  Minus,
+  Plus,
+  X,
+  ShoppingBag,
+  Heart,
+  Truck,
+  Shield,
+  Gift,
+  ArrowRight,
+  Star,
+} from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { updateLocalItem, removeLocalItem } from "../store/cartSlice";
+import { useWishlist } from "../contexts/WishlistContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useNavigateWithScroll } from "../utils/navigation";
+import {
+  useGetCartQuery,
+  useUpdateItemMutation,
+  useRemoveItemMutation,
+  useClearCartMutation,
+} from "../services/api";
 
 export const CartPage = () => {
-  const { items: cartItems, totals, updateItem, removeItem, clearCart } = useCart();
+  // Prefer server-backed RTK Query cart; fallback to Redux guest cart (`s.cart.localItems`)
+  const { data: cartResponse } = useGetCartQuery();
+  const [updateItemTrigger] = useUpdateItemMutation();
+  const [removeItemTrigger] = useRemoveItemMutation();
+  const [clearCartTrigger] = useClearCartMutation();
+
+  const dispatch = useDispatch();
+  const ctxItems = useSelector((s) => s.cart?.localItems || []);
+
+  const cartItems = cartResponse?.data?.items || ctxItems || [];
+
+  const subtotal = cartItems.reduce(
+    (sum, it) => sum + it.price * it.quantity,
+    0
+  );
+  const itemCount = cartItems.reduce((sum, it) => sum + it.quantity, 0);
+  const shipping = subtotal > 100 ? 0 : subtotal > 0 ? 10 : 0;
+  const totals = { subtotal, itemCount, shipping, total: subtotal + shipping };
   const { addItem: addToWishlist, isInWishlist } = useWishlist();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigateWithScroll();
@@ -21,14 +62,32 @@ export const CartPage = () => {
 
   const handleUpdateQuantity = async (itemId, newQuantity) => {
     if (newQuantity <= 0) {
-      await removeItem(itemId);
+      try {
+        await removeItemTrigger(itemId).unwrap();
+      } catch (e) {
+        dispatch(removeLocalItem(itemId));
+      }
     } else {
-      await updateItem(itemId, newQuantity);
+      try {
+        await updateItemTrigger({
+          itemId,
+          update: { quantity: newQuantity },
+        }).unwrap();
+      } catch (e) {
+        dispatch(
+          updateLocalItem({ id: itemId, changes: { quantity: newQuantity } })
+        );
+      }
     }
   };
 
   const handleRemoveItem = async (itemId) => {
-    await removeItem(itemId);
+    try {
+      await removeItemTrigger(itemId).unwrap();
+    } catch (e) {
+      // fallback to redux guest cart
+      dispatch(removeLocalItem(itemId));
+    }
   };
 
   const handleMoveToWishlist = async (item) => {
@@ -41,56 +100,68 @@ export const CartPage = () => {
       image: item.image,
       rating: 4.5, // Default rating
       reviews: 100, // Default reviews
-      colors: ['#000000', '#FFFFFF', '#FF6B9D'] // Default colors
+      colors: ["#000000", "#FFFFFF", "#FF6B9D"], // Default colors
     };
-    
+
     await addToWishlist(product);
-    await removeItem(item.id);
+    try {
+      await removeItemTrigger(item.id).unwrap();
+    } catch (e) {
+      dispatch(removeLocalItem(item.id));
+    }
   };
 
   const handleClearCart = async () => {
-    if (window.confirm('Are you sure you want to clear your entire cart?')) {
-      await clearCart();
+    if (window.confirm("Are you sure you want to clear your entire cart?")) {
+      try {
+        await clearCartTrigger().unwrap();
+      } catch (e) {
+        // clear local guest cart
+        dispatch({ type: "cart/clearLocalItems" });
+      }
     }
   };
 
   const handleCheckout = () => {
     if (!isAuthenticated) {
       // Could trigger auth modal or redirect to login
-      navigate('/login');
+      navigate("/login");
     } else {
-      navigate('/checkout');
+      navigate("/checkout");
     }
   };
 
   // Recommended products (mock data)
   const recommendedProducts = [
     {
-      id: 'rec-1',
-      name: 'Silk Scarf',
-      brand: 'HERMÈS',
+      id: "rec-1",
+      name: "Silk Scarf",
+      brand: "HERMÈS",
       price: 299,
       originalPrice: 399,
-      image: 'https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg?auto=compress&cs=tinysrgb&w=300',
-      rating: 4.9
+      image:
+        "https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg?auto=compress&cs=tinysrgb&w=300",
+      rating: 4.9,
     },
     {
-      id: 'rec-2',
-      name: 'Leather Wallet',
-      brand: 'COACH',
+      id: "rec-2",
+      name: "Leather Wallet",
+      brand: "COACH",
       price: 149,
-      image: 'https://images.pexels.com/photos/1927259/pexels-photo-1927259.jpeg?auto=compress&cs=tinysrgb&w=300',
-      rating: 4.7
+      image:
+        "https://images.pexels.com/photos/1927259/pexels-photo-1927259.jpeg?auto=compress&cs=tinysrgb&w=300",
+      rating: 4.7,
     },
     {
-      id: 'rec-3',
-      name: 'Designer Sunglasses',
-      brand: 'RAY-BAN',
+      id: "rec-3",
+      name: "Designer Sunglasses",
+      brand: "RAY-BAN",
       price: 199,
       originalPrice: 249,
-      image: 'https://images.pexels.com/photos/1464625/pexels-photo-1464625.jpeg?auto=compress&cs=tinysrgb&w=300',
-      rating: 4.8
-    }
+      image:
+        "https://images.pexels.com/photos/1464625/pexels-photo-1464625.jpeg?auto=compress&cs=tinysrgb&w=300",
+      rating: 4.8,
+    },
   ];
 
   return (
@@ -113,7 +184,8 @@ export const CartPage = () => {
                 Shopping Cart
               </h1>
               <p className="text-gray-600 mt-1">
-                {cartItems.length} {cartItems.length === 1 ? 'item' : 'items'} in your cart
+                {cartItems.length} {cartItems.length === 1 ? "item" : "items"}{" "}
+                in your cart
               </p>
             </div>
           </div>
@@ -135,12 +207,15 @@ export const CartPage = () => {
             <div className="w-32 h-32 mx-auto mb-8 bg-gray-100 rounded-full flex items-center justify-center">
               <ShoppingBag className="w-16 h-16 text-gray-400" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Your cart is empty</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Your cart is empty
+            </h2>
             <p className="text-gray-600 mb-8 max-w-md mx-auto">
-              Looks like you haven't added anything to your cart yet. Start shopping to fill it up!
+              Looks like you haven't added anything to your cart yet. Start
+              shopping to fill it up!
             </p>
-            <Button 
-              onClick={() => navigate('/')}
+            <Button
+              onClick={() => navigate("/")}
               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-3 rounded-xl"
             >
               Start Shopping
@@ -174,9 +249,15 @@ export const CartPage = () => {
                         <div className="flex-1 space-y-4">
                           <div className="flex justify-between">
                             <div>
-                              <p className="text-sm text-purple-600 font-bold uppercase tracking-wider">{item.brand}</p>
-                              <h3 className="font-bold text-gray-900 text-xl leading-tight">{item.name}</h3>
-                              <p className="text-gray-600 mt-1">Size: {item.size} • Color: {item.color}</p>
+                              <p className="text-sm text-purple-600 font-bold uppercase tracking-wider">
+                                {item.brand}
+                              </p>
+                              <h3 className="font-bold text-gray-900 text-xl leading-tight">
+                                {item.name}
+                              </h3>
+                              <p className="text-gray-600 mt-1">
+                                Size: {item.size} • Color: {item.color}
+                              </p>
                             </div>
                             <Button
                               variant="ghost"
@@ -190,9 +271,13 @@ export const CartPage = () => {
 
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <span className="text-2xl font-bold text-gray-900">${item.price}</span>
+                              <span className="text-2xl font-bold text-gray-900">
+                                ${item.price}
+                              </span>
                               {item.originalPrice && (
-                                <span className="text-lg text-gray-400 line-through">${item.originalPrice}</span>
+                                <span className="text-lg text-gray-400 line-through">
+                                  ${item.originalPrice}
+                                </span>
                               )}
                               {item.originalPrice && (
                                 <span className="text-sm font-bold text-green-600">
@@ -207,16 +292,28 @@ export const CartPage = () => {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                                  onClick={() =>
+                                    handleUpdateQuantity(
+                                      item.id,
+                                      item.quantity - 1
+                                    )
+                                  }
                                   className="w-8 h-8 rounded-full hover:bg-white"
                                 >
                                   <Minus className="w-4 h-4" />
                                 </Button>
-                                <span className="w-8 text-center font-bold text-lg">{item.quantity}</span>
+                                <span className="w-8 text-center font-bold text-lg">
+                                  {item.quantity}
+                                </span>
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                                  onClick={() =>
+                                    handleUpdateQuantity(
+                                      item.id,
+                                      item.quantity + 1
+                                    )
+                                  }
                                   className="w-8 h-8 rounded-full hover:bg-white"
                                 >
                                   <Plus className="w-4 h-4" />
@@ -229,24 +326,37 @@ export const CartPage = () => {
                                 onClick={() => handleMoveToWishlist(item)}
                                 className={`rounded-xl ${
                                   isInWishlist(item.product_id)
-                                    ? 'bg-red-50 border-red-200 text-red-600'
-                                    : 'hover:bg-red-50 hover:border-red-200 hover:text-red-600'
+                                    ? "bg-red-50 border-red-200 text-red-600"
+                                    : "hover:bg-red-50 hover:border-red-200 hover:text-red-600"
                                 }`}
                               >
-                                <Heart className={`w-4 h-4 mr-2 ${isInWishlist(item.product_id) ? 'fill-current' : ''}`} />
-                                {isInWishlist(item.product_id) ? 'Saved for Later' : 'Save for Later'}
+                                <Heart
+                                  className={`w-4 h-4 mr-2 ${
+                                    isInWishlist(item.product_id)
+                                      ? "fill-current"
+                                      : ""
+                                  }`}
+                                />
+                                {isInWishlist(item.product_id)
+                                  ? "Saved for Later"
+                                  : "Save for Later"}
                               </Button>
                             </div>
                           </div>
 
                           <div className="text-right">
                             <p className="text-sm text-gray-600">
-                              Subtotal: <span className="font-bold text-gray-900">${(item.price * item.quantity).toFixed(2)}</span>
+                              Subtotal:{" "}
+                              <span className="font-bold text-gray-900">
+                                ${(item.price * item.quantity).toFixed(2)}
+                              </span>
                             </p>
                           </div>
                         </div>
                       </div>
-                      {index < cartItems.length - 1 && <Separator className="mt-6" />}
+                      {index < cartItems.length - 1 && (
+                        <Separator className="mt-6" />
+                      )}
                     </div>
                   ))}
                 </CardContent>
@@ -274,21 +384,35 @@ export const CartPage = () => {
                           )}
                         </div>
                         <div className="space-y-2">
-                          <p className="text-xs text-purple-600 font-bold uppercase">{product.brand}</p>
-                          <h4 className="font-semibold text-gray-900">{product.name}</h4>
+                          <p className="text-xs text-purple-600 font-bold uppercase">
+                            {product.brand}
+                          </p>
+                          <h4 className="font-semibold text-gray-900">
+                            {product.name}
+                          </h4>
                           <div className="flex items-center gap-1">
                             {[...Array(5)].map((_, i) => (
-                              <Star 
-                                key={i} 
-                                className={`w-3 h-3 ${i < Math.floor(product.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}`} 
+                              <Star
+                                key={i}
+                                className={`w-3 h-3 ${
+                                  i < Math.floor(product.rating)
+                                    ? "fill-yellow-400 text-yellow-400"
+                                    : "text-gray-200"
+                                }`}
                               />
                             ))}
-                            <span className="text-xs text-gray-500 ml-1">({product.rating})</span>
+                            <span className="text-xs text-gray-500 ml-1">
+                              ({product.rating})
+                            </span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-gray-900">${product.price}</span>
+                            <span className="font-bold text-gray-900">
+                              ${product.price}
+                            </span>
                             {product.originalPrice && (
-                              <span className="text-sm text-gray-400 line-through">${product.originalPrice}</span>
+                              <span className="text-sm text-gray-400 line-through">
+                                ${product.originalPrice}
+                              </span>
                             )}
                           </div>
                           <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-2 rounded-xl text-sm">
@@ -313,13 +437,19 @@ export const CartPage = () => {
                   <CardContent className="space-y-4">
                     <div className="space-y-3">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Subtotal ({totals.itemCount} items)</span>
-                        <span className="font-semibold">${totals.subtotal.toFixed(2)}</span>
+                        <span className="text-gray-600">
+                          Subtotal ({totals.itemCount} items)
+                        </span>
+                        <span className="font-semibold">
+                          ${totals.subtotal.toFixed(2)}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Shipping</span>
                         <span className="font-semibold text-green-600">
-                          {totals.shipping === 0 ? 'Free' : `$${totals.shipping.toFixed(2)}`}
+                          {totals.shipping === 0
+                            ? "Free"
+                            : `$${totals.shipping.toFixed(2)}`}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
@@ -343,7 +473,7 @@ export const CartPage = () => {
 
                     <Button
                       variant="outline"
-                      onClick={() => navigate('/')}
+                      onClick={() => navigate("/")}
                       className="w-full rounded-xl py-3"
                     >
                       Continue Shopping
@@ -357,21 +487,27 @@ export const CartPage = () => {
                     <div className="flex items-center gap-3 text-sm">
                       <Truck className="w-5 h-5 text-blue-500" />
                       <div>
-                        <p className="font-semibold text-gray-900">Free Shipping</p>
+                        <p className="font-semibold text-gray-900">
+                          Free Shipping
+                        </p>
                         <p className="text-gray-600">On orders over $100</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
                       <Shield className="w-5 h-5 text-green-500" />
                       <div>
-                        <p className="font-semibold text-gray-900">Secure Payment</p>
+                        <p className="font-semibold text-gray-900">
+                          Secure Payment
+                        </p>
                         <p className="text-gray-600">256-bit SSL encryption</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
                       <Gift className="w-5 h-5 text-purple-500" />
                       <div>
-                        <p className="font-semibold text-gray-900">Easy Returns</p>
+                        <p className="font-semibold text-gray-900">
+                          Easy Returns
+                        </p>
                         <p className="text-gray-600">30-day return policy</p>
                       </div>
                     </div>

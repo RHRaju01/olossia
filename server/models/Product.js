@@ -1,18 +1,26 @@
-import { pool } from '../config/database.js';
-import dotenv from 'dotenv';
+import { pool } from "../config/database.js";
+import dotenv from "dotenv";
 
 dotenv.config();
 
-const DATABASE_TYPE = process.env.DATABASE_TYPE || 'supabase';
+const DATABASE_TYPE = process.env.DATABASE_TYPE || "supabase";
 
 export class Product {
   static async create(productData) {
     const {
-      name, description, price, brandId, categoryId, 
-      sku, stockQuantity, images, specifications, sellerId
+      name,
+      description,
+      price,
+      brandId,
+      categoryId,
+      sku,
+      stockQuantity,
+      images,
+      specifications,
+      sellerId,
     } = productData;
 
-    if (DATABASE_TYPE === 'postgresql') {
+    if (DATABASE_TYPE === "postgresql") {
       // PostgreSQL implementation
       const client = await pool.connect();
       try {
@@ -22,7 +30,7 @@ export class Product {
            RETURNING *`,
           [
             name,
-            name.toLowerCase().replace(/\s+/g, '-'),
+            name.toLowerCase().replace(/\s+/g, "-"),
             description,
             price,
             brandId,
@@ -31,10 +39,10 @@ export class Product {
             stockQuantity,
             JSON.stringify(images || []),
             JSON.stringify(specifications || {}),
-            sellerId
+            sellerId,
           ]
         );
-        
+
         return result.rows[0];
       } finally {
         client.release();
@@ -42,10 +50,10 @@ export class Product {
     } else {
       // Supabase implementation
       const { data, error } = await pool
-        .from('products')
+        .from("products")
         .insert({
           name,
-          slug: name.toLowerCase().replace(/\s+/g, '-'),
+          slug: name.toLowerCase().replace(/\s+/g, "-"),
           description,
           price,
           brand_id: brandId,
@@ -54,38 +62,40 @@ export class Product {
           stock_quantity: stockQuantity,
           images: images || [],
           specifications: specifications || {},
-          seller_id: sellerId
+          seller_id: sellerId,
         })
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     }
   }
 
   static async findById(id) {
-    if (DATABASE_TYPE === 'postgresql') {
+    if (DATABASE_TYPE === "postgresql") {
       // PostgreSQL implementation
       const client = await pool.connect();
       try {
         const result = await client.query(
           `SELECT p.*, b.name as brand_name, c.name as category_name, 
-                  u.first_name, u.last_name
-           FROM products p
-           INNER JOIN brands b ON p.brand_id = b.id
-           INNER JOIN categories c ON p.category_id = c.id
-           LEFT JOIN users u ON p.seller_id = u.id
-           WHERE p.id = $1 AND p.status = 'active'`,
+                    u.first_name, u.last_name
+             FROM products p
+             LEFT JOIN brands b ON p.brand_id = b.id
+             LEFT JOIN categories c ON p.category_id = c.id
+             LEFT JOIN users u ON p.seller_id = u.id
+             WHERE p.id = $1 AND p.status = 'active'`,
           [id]
         );
-        
+
         const product = result.rows[0];
         if (!product) return null;
-        
+
         return {
           ...product,
-          seller_name: product.first_name ? `${product.first_name} ${product.last_name}` : null
+          seller_name: product.first_name
+            ? `${product.first_name} ${product.last_name}`
+            : null,
         };
       } finally {
         client.release();
@@ -93,31 +103,35 @@ export class Product {
     } else {
       // Supabase implementation
       const { data, error } = await pool
-        .from('products')
-        .select(`
+        .from("products")
+        .select(
+          `
           *,
-          brands!inner(name),
-          categories!inner(name),
+          brands(name),
+          categories(name),
           users(first_name, last_name)
-        `)
-        .eq('id', id)
-        .eq('status', 'active')
+        `
+        )
+        .eq("id", id)
+        .eq("status", "active")
         .single();
-      
-      if (error && error.code !== 'PGRST116') throw error;
+
+      if (error && error.code !== "PGRST116") throw error;
       if (!data) return null;
-      
+
       return {
         ...data,
-        brand_name: data.brands.name,
-        category_name: data.categories.name,
-        seller_name: data.users ? `${data.users.first_name} ${data.users.last_name}` : null
+        brand_name: data.brands ? data.brands.name : null,
+        category_name: data.categories ? data.categories.name : null,
+        seller_name: data.users
+          ? `${data.users.first_name} ${data.users.last_name}`
+          : null,
       };
     }
   }
 
   static async getAll(filters = {}) {
-    if (DATABASE_TYPE === 'postgresql') {
+    if (DATABASE_TYPE === "postgresql") {
       // PostgreSQL implementation
       const client = await pool.connect();
       try {
@@ -126,12 +140,12 @@ export class Product {
                  COALESCE(AVG(r.rating), 0) as avg_rating,
                  COUNT(r.id) as review_count
           FROM products p
-          INNER JOIN brands b ON p.brand_id = b.id
-          INNER JOIN categories c ON p.category_id = c.id
+          LEFT JOIN brands b ON p.brand_id = b.id
+          LEFT JOIN categories c ON p.category_id = c.id
           LEFT JOIN reviews r ON p.id = r.product_id
           WHERE p.status = 'active'
         `;
-        
+
         const params = [];
         let paramCount = 0;
 
@@ -167,19 +181,19 @@ export class Product {
         }
 
         query += ` GROUP BY p.id, b.name, c.name ORDER BY p.created_at DESC`;
-        
+
         if (filters.limit) {
           paramCount++;
           query += ` LIMIT $${paramCount}`;
           params.push(filters.limit);
         }
-        
+
         if (filters.offset) {
           paramCount++;
           query += ` OFFSET $${paramCount}`;
           params.push(filters.offset);
         }
-        
+
         const result = await client.query(query, params);
         return result.rows;
       } finally {
@@ -188,73 +202,82 @@ export class Product {
     } else {
       // Supabase implementation
       let query = pool
-        .from('products')
-        .select(`
+        .from("products")
+        .select(
+          `
           *,
-          brands!inner(name),
-          categories!inner(name),
+          brands(name),
+          categories(name),
           reviews(rating)
-        `)
-        .eq('status', 'active');
+        `
+        )
+        .eq("status", "active");
 
       // Apply filters
       if (filters.categoryId) {
-        query = query.eq('category_id', filters.categoryId);
+        query = query.eq("category_id", filters.categoryId);
       }
 
       if (filters.brandId) {
-        query = query.eq('brand_id', filters.brandId);
+        query = query.eq("brand_id", filters.brandId);
       }
 
       if (filters.minPrice) {
-        query = query.gte('price', filters.minPrice);
+        query = query.gte("price", filters.minPrice);
       }
 
       if (filters.maxPrice) {
-        query = query.lte('price', filters.maxPrice);
+        query = query.lte("price", filters.maxPrice);
       }
 
       if (filters.search) {
-        query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+        query = query.or(
+          `name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`
+        );
       }
 
       // Apply ordering and pagination
       query = query
-        .order('created_at', { ascending: false })
-        .range(filters.offset || 0, (filters.offset || 0) + (filters.limit || 20) - 1);
-      
+        .order("created_at", { ascending: false })
+        .range(
+          filters.offset || 0,
+          (filters.offset || 0) + (filters.limit || 20) - 1
+        );
+
       const { data, error } = await query;
-      
+
       if (error) throw error;
-      
-      return data.map(product => ({
+
+      return data.map((product) => ({
         ...product,
-        brand_name: product.brands.name,
-        category_name: product.categories.name,
-        avg_rating: product.reviews.length > 0 
-          ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length 
-          : 0,
-        review_count: product.reviews.length
+        brand_name: product.brands ? product.brands.name : null,
+        category_name: product.categories ? product.categories.name : null,
+        avg_rating:
+          product.reviews.length > 0
+            ? product.reviews.reduce((sum, r) => sum + r.rating, 0) /
+              product.reviews.length
+            : 0,
+        review_count: product.reviews.length,
       }));
     }
   }
 
   static async updateStock(id, quantity) {
-    if (DATABASE_TYPE === 'postgresql') {
+    if (DATABASE_TYPE === "postgresql") {
       // PostgreSQL implementation
       const client = await pool.connect();
       try {
         // First check current stock
         const stockResult = await client.query(
-          'SELECT stock_quantity FROM products WHERE id = $1',
+          "SELECT stock_quantity FROM products WHERE id = $1",
           [id]
         );
-        
+
         const currentProduct = stockResult.rows[0];
         if (!currentProduct || currentProduct.stock_quantity < quantity) {
-          throw new Error('Insufficient stock');
+          throw new Error("Insufficient stock");
         }
-        
+
         const result = await client.query(
           `UPDATE products 
            SET stock_quantity = stock_quantity - $1, updated_at = CURRENT_TIMESTAMP 
@@ -262,7 +285,7 @@ export class Product {
            RETURNING stock_quantity`,
           [quantity, id]
         );
-        
+
         return result.rows[0];
       } finally {
         client.release();
@@ -270,32 +293,32 @@ export class Product {
     } else {
       // Supabase implementation
       const { data: currentProduct } = await pool
-        .from('products')
-        .select('stock_quantity')
-        .eq('id', id)
+        .from("products")
+        .select("stock_quantity")
+        .eq("id", id)
         .single();
-      
+
       if (!currentProduct || currentProduct.stock_quantity < quantity) {
-        throw new Error('Insufficient stock');
+        throw new Error("Insufficient stock");
       }
-      
+
       const { data, error } = await pool
-        .from('products')
-        .update({ 
+        .from("products")
+        .update({
           stock_quantity: currentProduct.stock_quantity - quantity,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
-        .eq('id', id)
-        .select('stock_quantity')
+        .eq("id", id)
+        .select("stock_quantity")
         .single();
-      
+
       if (error) throw error;
       return data;
     }
   }
 
   static async getFeatured(limit = 6) {
-    if (DATABASE_TYPE === 'postgresql') {
+    if (DATABASE_TYPE === "postgresql") {
       // PostgreSQL implementation
       const client = await pool.connect();
       try {
@@ -313,7 +336,7 @@ export class Product {
            LIMIT $1`,
           [limit]
         );
-        
+
         return result.rows;
       } finally {
         client.release();
@@ -321,28 +344,32 @@ export class Product {
     } else {
       // Supabase implementation
       const { data, error } = await pool
-        .from('products')
-        .select(`
+        .from("products")
+        .select(
+          `
           *,
           brands!inner(name),
           categories!inner(name),
           reviews(rating)
-        `)
-        .eq('status', 'active')
-        .eq('is_featured', true)
-        .order('created_at', { ascending: false })
+        `
+        )
+        .eq("status", "active")
+        .eq("is_featured", true)
+        .order("created_at", { ascending: false })
         .limit(limit);
-      
+
       if (error) throw error;
-      
-      return data.map(product => ({
+
+      return data.map((product) => ({
         ...product,
         brand_name: product.brands.name,
         category_name: product.categories.name,
-        avg_rating: product.reviews.length > 0 
-          ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length 
-          : 0,
-        review_count: product.reviews.length
+        avg_rating:
+          product.reviews.length > 0
+            ? product.reviews.reduce((sum, r) => sum + r.rating, 0) /
+              product.reviews.length
+            : 0,
+        review_count: product.reviews.length,
       }));
     }
   }

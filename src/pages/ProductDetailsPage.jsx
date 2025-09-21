@@ -1,7 +1,5 @@
 import React, { useState } from "react";
-import { Button } from "../components/ui/button";
-import { Card, CardContent } from "../components/ui/card";
-import { Separator } from "../components/ui/separator";
+import { Button, Card, CardContent, Separator } from "../components/ui";
 import {
   ArrowLeft,
   Heart,
@@ -16,15 +14,31 @@ import {
   Check,
   BarChart3,
 } from "lucide-react";
-import { useCart } from "../contexts/CartContext";
+import { useSelector } from "react-redux";
+import { useAuth } from "../contexts/AuthContext";
+import { useGetCartQuery } from "../services/api";
 import { useWishlist } from "../contexts/WishlistContext";
 import { useCompare } from "../contexts/CompareContext";
 import { useParams } from "react-router-dom";
 import { useNavigateWithScroll } from "../utils/navigation";
+import { useDispatch } from "react-redux";
+import { addLocalItem } from "../store/cartSlice";
+import { useAddItemMutation } from "../services/api";
 
 export const ProductDetailsPage = () => {
   const { id } = useParams();
-  const { addItem: addToCart } = useCart();
+  const localItems = useSelector((s) => s.cart?.localItems || []);
+  const { isAuthenticated } = useAuth();
+  const { data: cartResponse } = useGetCartQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+  const serverItems = cartResponse?.data?.items || [];
+  const sourceItems = isAuthenticated ? serverItems : localItems;
+
+  const isInCart = (productId) =>
+    sourceItems.some((item) => item.product_id === productId);
+  const dispatch = useDispatch();
+  const [addItemTrigger] = useAddItemMutation();
   const { addItem: addToWishlist, isInWishlist } = useWishlist();
   const { addItem: addToCompare, isInCompare } = useCompare();
   const navigate = useNavigateWithScroll();
@@ -49,7 +63,7 @@ export const ProductDetailsPage = () => {
     originalPrice: 189,
     discount: 32,
     rating: 4.8,
-    reviews: 124,
+    reviewsCount: 124,
     inStock: true,
     stockCount: 15,
     images: [
@@ -121,7 +135,23 @@ export const ProductDetailsPage = () => {
       image: product.images[0],
     };
 
-    await addToCart(cartItem);
+    try {
+      await addItemTrigger({ product_id: product.id, quantity }).unwrap();
+    } catch (e) {
+      dispatch(
+        addLocalItem({
+          id: `local-${Date.now()}`,
+          product_id: product.id,
+          variant_id: null,
+          quantity,
+          name: product.name,
+          price: product.price,
+          image: product.images[0],
+          size: selectedSize,
+          color: product.colors[selectedColor].name,
+        })
+      );
+    }
   };
 
   const handleAddToWishlist = async () => {
@@ -280,7 +310,9 @@ export const ProductDetailsPage = () => {
                   ))}
                 </div>
                 <span className="text-sm text-gray-600 font-medium">
-                  {product.rating} ({product.reviews.length} reviews)
+                  {product.rating} (
+                  {product.reviews?.length || product.reviewsCount || 0}{" "}
+                  reviews)
                 </span>
               </div>
 

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { Button } from "../components/ui/button";
-import { Card, CardContent } from "../components/ui/card";
+import { Button, Card, CardContent } from "../components/ui";
 import {
   ArrowLeft,
   TrendingUp,
@@ -13,14 +12,30 @@ import {
   List,
   BarChart3,
 } from "lucide-react";
-import { useCart } from "../contexts/CartContext";
+import { useSelector } from "react-redux";
+import { useAuth } from "../contexts/AuthContext";
+import { useGetCartQuery } from "../services/api";
 import { useWishlist } from "../contexts/WishlistContext";
 import { useCompare } from "../contexts/CompareContext";
 import { useNavigateWithScroll } from "../utils/navigation";
 import { ProductDetailsOverlay } from "../components/commerce/ProductDetailsOverlay";
+import { useDispatch } from "react-redux";
+import { addLocalItem } from "../store/cartSlice";
+import { useAddItemMutation } from "../services/api";
 
 export const TrendingPage = () => {
-  const { addItem: addToCart, isInCart } = useCart();
+  const localItems = useSelector((s) => s.cart?.localItems || []);
+  const { isAuthenticated } = useAuth();
+  const { data: cartResponse } = useGetCartQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+  const serverItems = cartResponse?.data?.items || [];
+  const sourceItems = isAuthenticated ? serverItems : localItems;
+
+  const isInCart = (productId) =>
+    sourceItems.some((item) => item.product_id === productId);
+  const dispatch = useDispatch();
+  const [addItemTrigger] = useAddItemMutation();
   const { addItem: addToWishlist, isInWishlist } = useWishlist();
   const { addItem: addToCompare, isInCompare } = useCompare();
   const navigate = useNavigateWithScroll();
@@ -157,7 +172,21 @@ export const TrendingPage = () => {
   };
 
   const handleAddToCart = async (product) => {
-    await addToCart(product);
+    try {
+      await addItemTrigger({ product_id: product.id, quantity: 1 }).unwrap();
+    } catch (e) {
+      dispatch(
+        addLocalItem({
+          id: `local-${Date.now()}`,
+          product_id: product.id,
+          variant_id: null,
+          quantity: 1,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+        })
+      );
+    }
   };
 
   const handleViewProduct = (productId) => {

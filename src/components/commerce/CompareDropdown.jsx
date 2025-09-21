@@ -12,7 +12,12 @@ import {
 } from "lucide-react";
 import { useCompare } from "../../contexts/CompareContext";
 import { useWishlist } from "../../contexts/WishlistContext";
-import { useCart } from "../../contexts/CartContext";
+import { useSelector } from "react-redux";
+import { useAuth } from "../../contexts/AuthContext";
+import { useGetCartQuery } from "../../services/api";
+import { useAddItemMutation } from "../../services/api";
+import { useDispatch } from "react-redux";
+import { addLocalItem } from "../../store/cartSlice";
 import { useNavigate } from "react-router-dom";
 
 // Memoized compare item component
@@ -144,7 +149,18 @@ CompareItem.displayName = "CompareItem";
 export const CompareDropdown = ({ isOpen, onClose }) => {
   const { items: compareItems, removeItem, clearError, error } = useCompare();
   const { addItem: addToWishlist, isInWishlist } = useWishlist();
-  const { addItem: addToCart, isInCart } = useCart();
+  const localItems = useSelector((s) => s.cart?.localItems || []);
+  const { isAuthenticated } = useAuth();
+  const { data: cartResponse } = useGetCartQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+  const serverItems = cartResponse?.data?.items || [];
+  const sourceItems = isAuthenticated ? serverItems : localItems;
+
+  const isInCart = (productId) =>
+    sourceItems.some((item) => item.product_id === productId);
+  const [addItemTrigger] = useAddItemMutation();
+  const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleRemoveFromCompare = useCallback(
@@ -184,9 +200,23 @@ export const CompareDropdown = ({ isOpen, onClose }) => {
         image: item.image,
       };
 
-      await addToCart(product);
+      try {
+        await addItemTrigger({ product_id: product.id, quantity: 1 }).unwrap();
+      } catch (e) {
+        dispatch(
+          addLocalItem({
+            id: `local-${Date.now()}`,
+            product_id: product.id,
+            variant_id: null,
+            quantity: 1,
+            name: product.name,
+            price: product.price,
+            image: product.image,
+          })
+        );
+      }
     },
-    [addToCart]
+    [addItemTrigger, dispatch]
   );
 
   const handleViewComparison = useCallback(() => {

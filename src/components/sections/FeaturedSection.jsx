@@ -1,15 +1,18 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { Button } from "../ui/button";
+import { Button } from "../ui";
 import { ArrowRight } from "lucide-react";
 import { ProductCard } from "../commerce/ProductCard";
-import { useCart } from "../../contexts/CartContext";
+import { useSelector, useDispatch } from "react-redux";
+import { addLocalItem } from "../../store/cartSlice";
 import { useWishlist } from "../../contexts/WishlistContext";
 import { useCompare } from "../../contexts/CompareContext";
+import { useAddItemMutation } from "../../services/api";
 import { useNavigateWithScroll } from "../../utils/navigation";
 import { ProductDetailsOverlay } from "../commerce/ProductDetailsOverlay";
 
 export const FeaturedSection = React.memo(() => {
-  const { addItem: addToCart, items: cartItems } = useCart();
+  const dispatch = useDispatch();
+  const cartItems = useSelector((s) => s.cart?.localItems || []);
   const {
     addItem: addToWishlist,
     removeItem: removeFromWishlist,
@@ -17,6 +20,7 @@ export const FeaturedSection = React.memo(() => {
     items: wishlistItems,
   } = useWishlist();
   const { addItem: addToCompare, isInCompare } = useCompare();
+  const [addItemTrigger] = useAddItemMutation();
   const navigate = useNavigateWithScroll();
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
@@ -140,12 +144,40 @@ export const FeaturedSection = React.memo(() => {
         return;
       }
 
-      const result = await addToCart(product);
-      if (!result.success) {
-        alert(result.error);
+      try {
+        // prefer RTK mutation
+        const res = await addItemTrigger({
+          product_id: product.id,
+          quantity: 1,
+        }).unwrap();
+        if (!res) {
+          dispatch(
+            addLocalItem({
+              id: `local-${Date.now()}`,
+              product_id: product.id,
+              variant_id: null,
+              quantity: 1,
+              name: product.name,
+              price: product.price,
+              image: product.image,
+            })
+          );
+        }
+      } catch (e) {
+        dispatch(
+          addLocalItem({
+            id: `local-${Date.now()}`,
+            product_id: product.id,
+            variant_id: null,
+            quantity: 1,
+            name: product.name,
+            price: product.price,
+            image: product.image,
+          })
+        );
       }
     },
-    [cartItems, addToCart]
+    [cartItems, addItemTrigger, dispatch]
   );
 
   const isInCart = useCallback(

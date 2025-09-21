@@ -1,107 +1,58 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { productAPI } from '../services/api/productAPI';
+import { useMemo } from "react";
+import {
+  useGetProductsQuery,
+  useGetProductQuery,
+  useGetFeaturedProductsQuery,
+} from "../services/api";
 
 export const useProducts = (filters = {}) => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    hasMore: false
+  // RTK Query hook — it handles loading, error, and caching
+  const { data, isLoading, isError, refetch } = useGetProductsQuery(filters, {
+    skip: false,
   });
 
-  const fetchProducts = useCallback(async (newFilters = {}) => {
-    setLoading(true);
-    setError(null);
+  const products = data?.data?.products || [];
+  const pagination = data?.data?.pagination || {
+    page: 1,
+    limit: 20,
+    hasMore: false,
+  };
+  const error = isError ? data?.message || "Failed to fetch products" : null;
 
-    try {
-      const response = await productAPI.getProducts({
-        ...filters,
-        ...newFilters
-      });
-
-      setProducts(response.data.products);
-      setPagination(response.data.pagination);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch products');
-    } finally {
-      setLoading(false);
-    }
-  }, [filters]);
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const refetch = useCallback((newFilters = {}) => {
-    fetchProducts(newFilters);
-  }, [fetchProducts]);
-
-  return useMemo(() => ({
-    products,
-    loading,
-    error,
-    pagination,
-    refetch
-  }), [products, loading, error, pagination, refetch]);
+  return useMemo(
+    () => ({
+      products,
+      loading: isLoading,
+      error,
+      pagination,
+      refetch,
+    }),
+    [products, isLoading, error, pagination, refetch]
+  );
 };
 
 export const useFeaturedProducts = (limit = 6) => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { data, isLoading, isError } = useGetFeaturedProductsQuery(limit);
 
-  useEffect(() => {
-    const fetchFeaturedProducts = async () => {
-      try {
-        const response = await productAPI.getFeaturedProducts(limit);
-        setProducts(response.data.products);
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch featured products');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const products = data?.data?.products || [];
+  const error = isError
+    ? data?.message || "Failed to fetch featured products"
+    : null;
 
-    fetchFeaturedProducts();
-  }, [limit]);
-
-  return useMemo(() => ({ 
-    products, 
-    loading, 
-    error 
-  }), [products, loading, error]);
+  return useMemo(
+    () => ({ products, loading: isLoading, error }),
+    [products, isLoading, error]
+  );
 };
 
 export const useProduct = (id) => {
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { data, isLoading, isError } = useGetProductQuery(id, { skip: !id });
 
-  useEffect(() => {
-    if (!id) return;
+  const product = data?.data?.product || null;
+  const error = isError ? data?.message || "Failed to fetch product" : null;
 
-    const fetchProduct = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await productAPI.getProduct(id);
-        setProduct(response.data.product);
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch product');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProduct();
-  }, [id]);
-
-  return useMemo(() => ({ 
-    product, 
-    loading, 
-    error 
-  }), [product, loading, error]);
+  return useMemo(
+    () => ({ product, loading: isLoading, error }),
+    [product, isLoading, error]
+  );
 };

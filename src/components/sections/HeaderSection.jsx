@@ -15,19 +15,37 @@ import {
   Eye,
 } from "lucide-react";
 import { BarChart3 } from "lucide-react";
-import { Button } from "../ui/button";
-import { SearchBar } from "../ui/SearchBar";
+import { Button, SearchBar } from "../ui";
 import { CartDropdown } from "../commerce/CartDropdown";
 import { WishlistDropdown } from "../commerce/WishlistDropdown";
 import { NotificationDropdown } from "../ui/NotificationDropdown";
 import { CompareDropdown } from "../commerce/CompareDropdown";
-import { useCart } from "../../contexts/CartContext";
+import { useSelector } from "react-redux";
 import { useWishlist } from "../../contexts/WishlistContext";
 import { useCompare } from "../../contexts/CompareContext";
+import { useGetCartQuery } from "../../services/api";
 
 export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
   const navigate = useNavigateWithScroll();
-  const { totals } = useCart();
+  // Prefer RTK Query cart totals when available
+  const { data: cartResponse } = useGetCartQuery();
+  // Fallback to local redux guest cart totals
+  const ctxItems = useSelector((s) => s.cart?.localItems || []);
+
+  const cartItems = cartResponse?.data?.items || ctxItems || [];
+  const totals = cartItems.length
+    ? {
+        subtotal: cartItems.reduce((s, it) => s + it.price * it.quantity, 0),
+        itemCount: cartItems.reduce((s, it) => s + it.quantity, 0),
+        shipping: (() => {
+          const subtotal = cartItems.reduce(
+            (s, it) => s + it.price * it.quantity,
+            0
+          );
+          return subtotal > 100 ? 0 : subtotal > 0 ? 10 : 0;
+        })(),
+      }
+    : { subtotal: 0, itemCount: 0, shipping: 0 };
   const { items: wishlistItems } = useWishlist();
   const { items: compareItems } = useCompare();
 
