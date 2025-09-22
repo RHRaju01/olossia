@@ -6,7 +6,8 @@
   "description": "Multi Brand Social Ecommerce",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "smoke:auth": "node ./scripts/smoke-auth.js"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
