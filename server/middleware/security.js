@@ -1,5 +1,5 @@
-import rateLimit from 'express-rate-limit';
-import helmet from 'helmet';
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 
 // Rate limiting configuration
 export const createRateLimit = (windowMs, max, message) => {
@@ -8,7 +8,7 @@ export const createRateLimit = (windowMs, max, message) => {
     max,
     message: {
       success: false,
-      message
+      message,
     },
     standardHeaders: true,
     legacyHeaders: false,
@@ -17,23 +17,23 @@ export const createRateLimit = (windowMs, max, message) => {
 
 // General rate limiting
 export const generalLimiter = createRateLimit(
-  15 * 60 * 1000, // 15 minutes
+  30 * 60 * 1000, // 30 minutes
   100, // limit each IP to 100 requests per windowMs
-  'Too many requests from this IP, please try again later'
+  "Too many requests from this IP, please try again later"
 );
 
 // Auth rate limiting (stricter)
 export const authLimiter = createRateLimit(
   15 * 60 * 1000, // 15 minutes
-  5, // limit each IP to 5 auth requests per windowMs
-  'Too many authentication attempts, please try again later'
+  50, // limit each IP to 50 auth requests per windowMs
+  "Too many authentication attempts, please try again later"
 );
 
 // API rate limiting
 export const apiLimiter = createRateLimit(
   15 * 60 * 1000, // 15 minutes
   1000, // limit each IP to 1000 API requests per windowMs
-  'API rate limit exceeded'
+  "API rate limit exceeded"
 );
 
 // Security headers configuration

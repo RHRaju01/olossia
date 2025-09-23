@@ -15,7 +15,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { useSelector } from "react-redux";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuthRedux } from "../hooks/useAuthRedux";
 import { useGetCartQuery } from "../services/api";
 import { useWishlist } from "../contexts/WishlistContext";
 import { useCompare } from "../contexts/CompareContext";
@@ -28,7 +28,7 @@ import { useAddItemMutation } from "../services/api";
 export const ProductDetailsPage = () => {
   const { id } = useParams();
   const localItems = useSelector((s) => s.cart?.localItems || []);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuthRedux();
   const { data: cartResponse } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
   });

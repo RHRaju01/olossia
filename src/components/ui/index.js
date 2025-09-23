@@ -1,6 +1,7 @@
 // Barrel file for UI components — export only implemented components and use named exports
 export { Button } from "./button";
 export { Input } from "./input";
+export { Textarea } from "./textarea";
 // Dialog primitives (named exports) are in dialog.jsx
 export * from "./dialog";
 export * from "./card";

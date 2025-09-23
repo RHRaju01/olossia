@@ -6,7 +6,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { useAuth } from "../Auth/AuthContext";
+import { useAuthRedux } from "../../hooks/useAuthRedux";
 
 const CompareContext = createContext();
 
@@ -81,7 +81,7 @@ const initialState = {
 
 export const CompareProvider = ({ children }) => {
   const [state, dispatch] = useReducer(compareReducer, initialState);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuthRedux();
 
   // Load compare items when user is authenticated
   useEffect(() => {

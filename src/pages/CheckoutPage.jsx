@@ -22,7 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuthRedux } from "../hooks/useAuthRedux";
 import { useGetCartQuery, useClearCartMutation } from "../services/api";
 import {
   updateLocalItem,
@@ -34,7 +34,7 @@ import { useNavigateWithScroll } from "../utils/navigation";
 
 export const CheckoutPage = () => {
   const localItems = useSelector((s) => s.cart?.localItems || []);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuthRedux();
   const { data: cartResponse } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
   });
@@ -66,7 +66,7 @@ export const CheckoutPage = () => {
   };
   const [updateItemTrigger] = useUpdateItemMutation();
   const [removeItemTrigger] = useRemoveItemMutation();
-  const { user } = useAuth();
+  const { user } = useAuthRedux();
   const navigate = useNavigateWithScroll();
 
   // Scroll to top when component mounts

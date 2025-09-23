@@ -3,11 +3,11 @@ import { Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "react-query";
 import { Button } from "./components/ui/button";
-import { AuthProvider } from "./contexts/AuthContext";
 import { WishlistProvider } from "./contexts/WishlistContext";
 import { CompareProvider } from "./contexts/CompareContext";
 import { MainLayout } from "./components/layout/MainLayout";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { useAuthRedux } from "./hooks/useAuthRedux";
 
 // Lazy load pages for better performance
 const HomePage = React.lazy(() =>
@@ -66,6 +66,26 @@ const ComparePage = React.lazy(() =>
     default: module.ComparePage,
   }))
 );
+const UserProfilePage = React.lazy(() =>
+  import("./pages/UserProfilePage").then((module) => ({
+    default: module.UserProfilePage,
+  }))
+);
+const SupportPage = React.lazy(() =>
+  import("./pages/SupportPage").then((module) => ({
+    default: module.SupportPage,
+  }))
+);
+const SellerDashboard = React.lazy(() =>
+  import("./pages/SellerDashboard").then((module) => ({
+    default: module.SellerDashboard,
+  }))
+);
+const SellerProductNew = React.lazy(() =>
+  import("./pages/SellerProductNew").then((module) => ({
+    default: module.SellerProductNew,
+  }))
+);
 
 // Loading component
 const PageLoader = () => (
@@ -90,116 +110,121 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Small component to eagerly initialize auth/profile on app mount
+  const AuthInitializer = () => {
+    // eslint-disable-next-line no-unused-vars
+    const { profile } = useAuthRedux();
+    return null;
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <WishlistProvider>
-          <CompareProvider>
-            <Router>
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
-                  {/* Main application routes */}
-                  <Route path="/" element={<MainLayout />}>
-                    <Route index element={<HomePage />} />
+      <WishlistProvider>
+        <CompareProvider>
+          <AuthInitializer />
+          <Router>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                {/* Main application routes */}
+                <Route path="/" element={<MainLayout />}>
+                  <Route index element={<HomePage />} />
 
-                    {/* Auth routes - handled by overlay */}
-                    <Route path="/login" element={<HomePage />} />
-                    <Route path="/register" element={<HomePage />} />
+                  {/* Auth routes - handled by overlay */}
+                  <Route path="/login" element={<HomePage />} />
+                  <Route path="/register" element={<HomePage />} />
 
-                    {/* Product routes */}
-                    <Route path="/products" element={<ProductsPage />} />
-                    <Route path="/categories" element={<CategoriesPage />} />
-                    <Route path="/brands" element={<BrandsPage />} />
-                    <Route path="/trending" element={<TrendingPage />} />
-                    <Route
-                      path="/product/:id"
-                      element={<ProductDetailsPage />}
-                    />
+                  {/* Product routes */}
+                  <Route path="/products" element={<ProductsPage />} />
+                  <Route path="/categories" element={<CategoriesPage />} />
+                  <Route path="/brands" element={<BrandsPage />} />
+                  <Route path="/trending" element={<TrendingPage />} />
+                  <Route path="/product/:id" element={<ProductDetailsPage />} />
 
-                    {/* Wishlist route */}
-                    <Route path="/wishlist" element={<WishlistPage />} />
+                  {/* Wishlist route */}
+                  <Route path="/wishlist" element={<WishlistPage />} />
 
-                    {/* Compare route */}
-                    <Route path="/compare" element={<ComparePage />} />
+                  {/* Support route */}
+                  <Route path="/support" element={<SupportPage />} />
 
-                    {/* Cart route */}
-                    <Route path="/cart" element={<CartPage />} />
+                  {/* Compare route */}
+                  <Route path="/compare" element={<ComparePage />} />
 
-                    {/* Checkout routes */}
-                    <Route path="/checkout" element={<CheckoutPage />} />
-                    <Route
-                      path="/order-success"
-                      element={<OrderSuccessPage />}
-                    />
+                  {/* Cart route */}
+                  <Route path="/cart" element={<CartPage />} />
 
-                    {/* Protected admin routes */}
-                    <Route
-                      path="/admin/*"
-                      element={
-                        <ProtectedRoute roles={["admin"]}>
-                          <Routes>
-                            <Route
-                              path="/dashboard"
-                              element={<AdminDashboard />}
-                            />
-                            <Route path="*" element={<AdminDashboard />} />
-                          </Routes>
-                        </ProtectedRoute>
-                      }
-                    />
+                  {/* Checkout routes */}
+                  <Route path="/checkout" element={<CheckoutPage />} />
+                  <Route path="/order-success" element={<OrderSuccessPage />} />
 
-                    {/* Protected seller routes */}
-                    <Route
-                      path="/seller/*"
-                      element={
-                        <ProtectedRoute roles={["admin", "seller"]}>
-                          <div className="min-h-screen flex items-center justify-center">
-                            <h1 className="text-2xl font-bold">
-                              Seller Dashboard Coming Soon
-                            </h1>
-                          </div>
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    {/* Protected customer routes */}
-                    <Route
-                      path="/profile"
-                      element={
-                        <ProtectedRoute>
-                          <div className="min-h-screen flex items-center justify-center">
-                            <h1 className="text-2xl font-bold">
-                              User Profile Coming Soon
-                            </h1>
-                          </div>
-                        </ProtectedRoute>
-                      }
-                    />
-                  </Route>
-
-                  {/* 404 route */}
+                  {/* Protected admin routes */}
                   <Route
-                    path="*"
+                    path="/admin/*"
                     element={
-                      <div className="min-h-screen flex items-center justify-center">
-                        <div className="text-center">
-                          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                            404
-                          </h1>
-                          <p className="text-gray-600 mb-6">Page not found</p>
-                          <Button onClick={() => window.history.back()}>
-                            Go Back
-                          </Button>
-                        </div>
-                      </div>
+                      <ProtectedRoute roles={["admin"]}>
+                        <Routes>
+                          <Route
+                            path="/dashboard"
+                            element={<AdminDashboard />}
+                          />
+                          <Route path="*" element={<AdminDashboard />} />
+                        </Routes>
+                      </ProtectedRoute>
                     }
                   />
-                </Routes>
-              </Suspense>
-            </Router>
-          </CompareProvider>
-        </WishlistProvider>
-      </AuthProvider>
+
+                  {/* Protected seller routes */}
+                  <Route
+                    path="/seller/*"
+                    element={
+                      <ProtectedRoute roles={["admin", "seller"]}>
+                        <Routes>
+                          <Route
+                            path="/dashboard"
+                            element={<SellerDashboard />}
+                          />
+                          <Route
+                            path="/products/new"
+                            element={<SellerProductNew />}
+                          />
+                          <Route path="*" element={<SellerDashboard />} />
+                        </Routes>
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Protected customer routes */}
+                  <Route
+                    path="/profile"
+                    element={
+                      <ProtectedRoute>
+                        <UserProfilePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                </Route>
+
+                {/* 404 route */}
+                <Route
+                  path="*"
+                  element={
+                    <div className="min-h-screen flex items-center justify-center">
+                      <div className="text-center">
+                        <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                          404
+                        </h1>
+                        <p className="text-gray-600 mb-6">Page not found</p>
+                        <Button onClick={() => window.history.back()}>
+                          Go Back
+                        </Button>
+                      </div>
+                    </div>
+                  }
+                />
+              </Routes>
+            </Suspense>
+          </Router>
+        </CompareProvider>
+      </WishlistProvider>
     </QueryClientProvider>
   );
 }

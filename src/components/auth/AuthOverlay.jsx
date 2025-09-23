@@ -6,7 +6,7 @@ import React, {
   useMemo,
 } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuthRedux } from "../../hooks/useAuthRedux";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -22,7 +22,7 @@ import {
   X,
 } from "lucide-react";
 
-export const AuthOverlay = ({ isOpen, onClose }) => {
+export const AuthOverlay = ({ isOpen, onClose, authOverride = null }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -41,7 +41,19 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
     confirmPassword: "",
   });
 
-  const { login, register, error, clearError } = useAuth();
+  const auth = authOverride || useAuthRedux();
+  const { login, register, error, errors, clearError } = auth;
+
+  const [fieldErrors, setFieldErrors] = useState(null);
+  const [hideRateLimitBanner, setHideRateLimitBanner] = useState(false);
+
+  // Refs for focusing on first invalid field
+  const firstNameRef = useRef(null);
+  const lastNameRef = useRef(null);
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+  const confirmPasswordRef = useRef(null);
+  const topAlertRef = useRef(null);
 
   const handleInputChange = useCallback(
     (e) => {
@@ -57,11 +69,12 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
       }
 
       // Clear error when user starts typing
-      if (error) {
+      if (error || fieldErrors) {
         clearError();
+        setFieldErrors(null);
       }
     },
-    [isSignUp, error, clearError]
+    [isSignUp, error, clearError, fieldErrors]
   );
 
   const calculatePasswordStrength = useCallback((password) => {
@@ -105,6 +118,7 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
           lastName: formData.lastName,
           email: formData.email,
           password: formData.password,
+          confirmPassword: formData.confirmPassword,
         });
       } else {
         result = await login({
@@ -116,12 +130,64 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
       if (result.success) {
         onClose();
         resetForm();
+      } else {
+        // If server returned field-level validation errors, surface them
+        if (result.errors) {
+          // express-validator style: array of { param, msg }
+          const byField = {};
+          if (Array.isArray(result.errors)) {
+            result.errors.forEach((it) => {
+              const key = it.param || it.path || "_form";
+              byField[key] = byField[key] || [];
+              byField[key].push(it.msg || it.message || it);
+            });
+          } else if (
+            typeof result.errors === "object" &&
+            result.errors !== null
+          ) {
+            Object.keys(result.errors).forEach((k) => {
+              byField[k] = Array.isArray(result.errors[k])
+                ? result.errors[k]
+                : [result.errors[k]];
+            });
+          }
+          setFieldErrors(byField);
+        }
       }
 
       setIsSubmitting(false);
     },
     [isSignUp, formData, register, login, onClose]
   );
+
+  // Focus first invalid field or top alert when fieldErrors change
+  useEffect(() => {
+    if (!fieldErrors) return;
+    // If there is a top-level/form error, focus the alert
+    if (fieldErrors._form && topAlertRef.current) {
+      try {
+        topAlertRef.current.focus();
+      } catch (e) {}
+      return;
+    }
+
+    const order = [
+      { key: "firstName", ref: firstNameRef },
+      { key: "lastName", ref: lastNameRef },
+      { key: "email", ref: emailRef },
+      { key: "password", ref: passwordRef },
+      { key: "confirmPassword", ref: confirmPasswordRef },
+    ];
+
+    for (const o of order) {
+      if (fieldErrors[o.key] && o.ref && o.ref.current) {
+        try {
+          o.ref.current.focus();
+        } catch (e) {}
+        break;
+      }
+    }
+  }, [fieldErrors]);
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -187,10 +253,55 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
           </CardHeader>
 
           <CardContent className="p-8">
+            {/* Accessible live region for global errors */}
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <p className="text-red-700 text-sm">{error}</p>
+              <div>
+                {/* Rate limit specific banner (dismissible) */}
+                {error ===
+                  "Too many authentication attempts, please try again later" &&
+                !hideRateLimitBanner ? (
+                  <div
+                    ref={topAlertRef}
+                    tabIndex={-1}
+                    role="alert"
+                    aria-live="assertive"
+                    className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+                      <p className="text-yellow-800 text-sm">{error}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setHideRateLimitBanner(true)}
+                      aria-label="Dismiss"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    role="alert"
+                    aria-live="assertive"
+                    className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3"
+                  >
+                    <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                    <p className="text-red-700 text-sm">{error}</p>
+                  </div>
+                )}
+              </div>
+            )}
+            {/* Top-level field/_form errors */}
+            {fieldErrors && fieldErrors._form && (
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="mb-4 p-3 bg-red-50 border border-red-200 rounded"
+              >
+                <p className="text-red-700 text-sm">
+                  {fieldErrors._form.join(", ")}
+                </p>
               </div>
             )}
 
@@ -199,12 +310,16 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
               {isSignUp && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="firstName"
+                      className="text-sm font-medium text-gray-700"
+                    >
                       First Name
                     </label>
                     <div className="relative">
                       <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                       <Input
+                        id="firstName"
                         type="text"
                         name="firstName"
                         value={formData.firstName}
@@ -212,35 +327,71 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
                         placeholder="First name"
                         className="pl-12 pr-4 py-3 rounded-xl border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
                         required
+                        aria-invalid={fieldErrors?.firstName ? "true" : "false"}
+                        aria-describedby={
+                          fieldErrors?.firstName ? "firstName-error" : undefined
+                        }
+                        ref={firstNameRef}
                       />
                     </div>
+                    {fieldErrors?.firstName && (
+                      <p
+                        id="firstName-error"
+                        className="text-sm text-red-500 mt-1"
+                      >
+                        {fieldErrors.firstName.join(", ")}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="lastName"
+                      className="text-sm font-medium text-gray-700"
+                    >
                       Last Name
                     </label>
-                    <Input
-                      type="text"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      placeholder="Last name"
-                      className="px-4 py-3 rounded-xl border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
-                      required
-                    />
+                    <div>
+                      <Input
+                        id="lastName"
+                        type="text"
+                        name="lastName"
+                        value={formData.lastName}
+                        onChange={handleInputChange}
+                        placeholder="Last name"
+                        className="px-4 py-3 rounded-xl border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+                        required
+                        aria-invalid={fieldErrors?.lastName ? "true" : "false"}
+                        aria-describedby={
+                          fieldErrors?.lastName ? "lastName-error" : undefined
+                        }
+                        ref={lastNameRef}
+                      />
+                    </div>
+                    {fieldErrors?.lastName && (
+                      <p
+                        id="lastName-error"
+                        className="text-sm text-red-500 mt-1"
+                      >
+                        {fieldErrors.lastName.join(", ")}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* Email field */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="email"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Email Address
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <Input
+                    id="email"
                     type="email"
                     name="email"
                     value={formData.email}
@@ -248,18 +399,32 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
                     placeholder="Enter your email"
                     className="pl-12 pr-4 py-3 rounded-xl border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
                     required
+                    aria-invalid={fieldErrors?.email ? "true" : "false"}
+                    aria-describedby={
+                      fieldErrors?.email ? "email-error" : undefined
+                    }
+                    ref={emailRef}
                   />
                 </div>
+                {fieldErrors?.email && (
+                  <p id="email-error" className="text-sm text-red-500 mt-1">
+                    {fieldErrors.email.join(", ")}
+                  </p>
+                )}
               </div>
 
               {/* Password field */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="password"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Password
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <Input
+                    id="password"
                     type={showPassword ? "text" : "password"}
                     name="password"
                     value={formData.password}
@@ -271,6 +436,11 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
                     }
                     className="pl-12 pr-12 py-3 rounded-xl border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
                     required
+                    aria-invalid={fieldErrors?.password ? "true" : "false"}
+                    aria-describedby={
+                      fieldErrors?.password ? "password-error" : undefined
+                    }
+                    ref={passwordRef}
                   />
                   <button
                     type="button"
@@ -284,6 +454,11 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
                     )}
                   </button>
                 </div>
+                {fieldErrors?.password && (
+                  <p id="password-error" className="text-sm text-red-500 mt-1">
+                    {fieldErrors.password.join(", ")}
+                  </p>
+                )}
 
                 {/* Password strength indicator for sign up */}
                 {isSignUp && formData.password && (
@@ -310,7 +485,7 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
                       <div
                         className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthColor}`}
                         style={{ width: `${(passwordStrength / 5) * 100}%` }}
-                      ></div>
+                      />
                     </div>
                   </div>
                 )}
@@ -319,12 +494,16 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
               {/* Confirm password for sign up */}
               {isSignUp && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="confirmPassword"
+                    className="text-sm font-medium text-gray-700"
+                  >
                     Confirm Password
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <Input
+                      id="confirmPassword"
                       type={showPassword ? "text" : "password"}
                       name="confirmPassword"
                       value={formData.confirmPassword}
@@ -336,6 +515,11 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
                           : ""
                       }`}
                       required
+                      aria-invalid={!passwordsMatch ? "true" : "false"}
+                      aria-describedby={
+                        !passwordsMatch ? "confirmPassword-error" : undefined
+                      }
+                      ref={confirmPasswordRef}
                     />
                     {formData.confirmPassword && (
                       <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
@@ -348,7 +532,10 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
                     )}
                   </div>
                   {formData.confirmPassword && !passwordsMatch && (
-                    <p className="text-sm text-red-500">
+                    <p
+                      id="confirmPassword-error"
+                      className="text-sm text-red-500"
+                    >
                       Passwords do not match
                     </p>
                   )}
@@ -415,7 +602,7 @@ export const AuthOverlay = ({ isOpen, onClose }) => {
               >
                 {isSubmitting ? (
                   <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
                     {isSignUp ? "Creating Account..." : "Signing In..."}
                   </div>
                 ) : (

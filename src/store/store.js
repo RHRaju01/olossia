@@ -3,6 +3,7 @@ import { setupListeners } from "@reduxjs/toolkit/query";
 import { baseApi } from "../services/api/baseApi";
 import authReducer, { setUser } from "./authSlice";
 import cartReducer, { clearLocalItems } from "./cartSlice";
+import { tokenStorage } from "../utils/tokenStorage";
 
 const listenerMiddleware = createListenerMiddleware();
 
@@ -25,6 +26,29 @@ listenerMiddleware.startListening({
         variant_id: li.variant_id || null,
         quantity: li.quantity,
       }));
+
+      // Debug: log token availability and items before initiating merge
+      // Optional debug info removed in production; token availability can be inspected via debug tools when needed.
+
+      // Wait briefly for tokens to be persisted to localStorage by auth flow
+      // Sometimes setUser is dispatched before tokenStorage has the token available
+      // Poll tokenStorage for up to ~500ms before attempting the merge so the
+      // outgoing request includes Authorization header.
+      let token = tokenStorage.getToken();
+      let tries = 0;
+      const maxTries = 5; // 5 * 100ms = 500ms
+      while (!token && tries < maxTries) {
+        // small delay
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((r) => setTimeout(r, 100));
+        token = tokenStorage.getToken();
+        tries += 1;
+      }
+
+      if (!token) {
+        // Can't attach Authorization header — skip merge to avoid 401 spam.
+        return;
+      }
 
       // Initiate the RTK Query mutation via baseApi endpoint (fire-and-forget handled below)
       const mergePromise = listenerApi.dispatch(
@@ -55,7 +79,11 @@ export const store = configureStore({
     cart: cartReducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware()
+    getDefaultMiddleware({
+      // Increase immutable/serializable check thresholds to avoid false-positive warnings in dev
+      immutableCheck: { warnAfter: 256 },
+      serializableCheck: { warnAfter: 256 },
+    })
       .concat(baseApi.middleware)
       .prepend(listenerMiddleware.middleware),
 });

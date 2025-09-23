@@ -3,7 +3,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { HeaderSection } from "../sections/HeaderSection";
 import { FooterSection } from "../sections/FooterSection";
 import { AuthOverlay } from "../auth/AuthOverlay";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuthRedux } from "../../hooks/useAuthRedux";
 
 // Memoized header component
 const MemoizedHeader = React.memo(({ onAuthModalOpen }) => (
@@ -21,7 +21,7 @@ export const MainLayout = () => {
   const [isAuthOverlayOpen, setIsAuthOverlayOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuthRedux();
 
   // Check if current path is auth-related
   const isAuthPath =

@@ -24,11 +24,16 @@ import { useSelector } from "react-redux";
 import { useWishlist } from "../../contexts/WishlistContext";
 import { useCompare } from "../../contexts/CompareContext";
 import { useGetCartQuery } from "../../services/api";
+import { useAuthRedux } from "../../hooks/useAuthRedux";
+import { UserDropdown } from "../user/UserMenu";
 
 export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
   const navigate = useNavigateWithScroll();
-  // Prefer RTK Query cart totals when available
-  const { data: cartResponse } = useGetCartQuery();
+  const { isAuthenticated, user, isAuthLocked, profile } = useAuthRedux();
+  // Prefer RTK Query cart totals when available (skip for guests)
+  const { data: cartResponse } = useGetCartQuery(undefined, {
+    skip: !isAuthenticated,
+  });
   // Fallback to local redux guest cart totals
   const ctxItems = useSelector((s) => s.cart?.localItems || []);
 
@@ -54,6 +59,8 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [userMenuVersion, setUserMenuVersion] = useState(0);
 
   const navItems = [
     { name: "Women", path: "/products?category=women" },
@@ -88,6 +95,9 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
       if (!isMenuOpen && !event.target.closest(".compare-dropdown-container")) {
         setIsCompareOpen(false);
       }
+      if (!isMenuOpen && !event.target.closest(".user-dropdown-container")) {
+        setIsUserMenuOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -100,11 +110,27 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
   const handleDesktopDropdownOpen = (dropdownType) => {
     if (isMenuOpen) return; // Prevent desktop dropdowns when hamburger is open
 
+    // Ensure only one desktop dropdown is active at a time
     setIsCartOpen(dropdownType === "cart");
     setIsWishlistOpen(dropdownType === "wishlist");
     setIsNotificationOpen(dropdownType === "notification");
     setIsCompareOpen(dropdownType === "compare");
+    setIsUserMenuOpen(dropdownType === "user");
   };
+
+  // Bump a version when the authenticated user identity changes so dropdown
+  // remounts and displays the latest user info immediately.
+  React.useEffect(() => {
+    // Use email or id as a stable identity; fallback to first+last name
+    const identity =
+      user?.id ||
+      user?.email ||
+      `${user?.firstName || ""}-${user?.lastName || ""}`;
+    if (identity) {
+      setUserMenuVersion((v) => v + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, user?.email, user?.firstName, user?.lastName]);
 
   // Mobile menu dropdown toggle (doesn't close mobile menu)
   const handleMobileDropdownToggle = (dropdownType) => {
@@ -294,15 +320,57 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
               )}
             </div>
             {/* User button */}
-            <div className="relative hidden sm:block z-50">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full hover:bg-gray-100"
-                onClick={handleUserClick}
-              >
-                <User className="w-5 h-5" />
-              </Button>
+            <div className="relative hidden sm:block z-50 user-dropdown-container">
+              {isAuthenticated &&
+              !isAuthLocked() &&
+              (profile?.isSuccess ?? true) ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold"
+                    aria-haspopup="true"
+                    aria-expanded={isUserMenuOpen}
+                    onMouseEnter={() => handleDesktopDropdownOpen("user")}
+                    onClick={() =>
+                      handleDesktopDropdownOpen(isUserMenuOpen ? null : "user")
+                    }
+                  >
+                    <span className="select-none">
+                      {user?.firstName?.charAt(0) || "U"}
+                      {user?.lastName?.charAt(0) || ""}
+                    </span>
+                  </Button>
+                  {!isMenuOpen && (
+                    <UserDropdown
+                      key={`${
+                        user?.id || user?.email || "guest"
+                      }-${userMenuVersion}`}
+                      isOpen={isUserMenuOpen}
+                      onClose={() => setIsUserMenuOpen(false)}
+                    />
+                  )}
+                </>
+              ) : isAuthenticated && isAuthLocked() ? (
+                // While auth is locked (transient), show a neutral icon to avoid
+                // flashing previous user initials.
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full hover:bg-gray-100"
+                >
+                  <User className="w-5 h-5" />
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full hover:bg-gray-100"
+                  onClick={handleUserClick}
+                >
+                  <User className="w-5 h-5" />
+                </Button>
+              )}
             </div>
 
             {/* Mobile menu button */}

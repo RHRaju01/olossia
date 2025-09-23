@@ -13,7 +13,7 @@ import {
   CheckCircle,
   X,
 } from "lucide-react";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuthRedux } from "../../hooks/useAuthRedux";
 
 export const UserDropdown = ({ isOpen, onClose }) => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -28,7 +28,7 @@ export const UserDropdown = ({ isOpen, onClose }) => {
     confirmPassword: "",
   });
 
-  const { login, register, error, clearError } = useAuth();
+  const { login, register, error, clearError } = useAuthRedux();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

@@ -23,7 +23,7 @@ import {
 import { useSelector, useDispatch } from "react-redux";
 import { updateLocalItem, removeLocalItem } from "../store/cartSlice";
 import { useWishlist } from "../contexts/WishlistContext";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuthRedux } from "../hooks/useAuthRedux";
 import { useNavigateWithScroll } from "../utils/navigation";
 import {
   useGetCartQuery,
@@ -33,8 +33,11 @@ import {
 } from "../services/api";
 
 export const CartPage = () => {
+  const { isAuthenticated } = useAuthRedux();
   // Prefer server-backed RTK Query cart; fallback to Redux guest cart (`s.cart.localItems`)
-  const { data: cartResponse } = useGetCartQuery();
+  const { data: cartResponse } = useGetCartQuery(undefined, {
+    skip: !isAuthenticated,
+  });
   const [updateItemTrigger] = useUpdateItemMutation();
   const [removeItemTrigger] = useRemoveItemMutation();
   const [clearCartTrigger] = useClearCartMutation();
@@ -52,7 +55,6 @@ export const CartPage = () => {
   const shipping = subtotal > 100 ? 0 : subtotal > 0 ? 10 : 0;
   const totals = { subtotal, itemCount, shipping, total: subtotal + shipping };
   const { addItem: addToWishlist, isInWishlist } = useWishlist();
-  const { isAuthenticated } = useAuth();
   const navigate = useNavigateWithScroll();
 
   // Scroll to top when component mounts

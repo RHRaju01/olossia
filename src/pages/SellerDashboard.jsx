@@ -8,83 +8,78 @@ import {
 } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import {
-  Users,
   Package,
   ShoppingCart,
-  TrendingUp,
+  Users,
+  BarChart3,
   DollarSign,
   Eye,
   Settings,
-  BarChart3,
+  TrendingUp,
 } from "lucide-react";
 import { useNavigateWithScroll } from "../utils/navigation";
 
-export const AdminDashboard = () => {
+export const SellerDashboard = () => {
   const { user } = useAuthRedux();
   const navigate = useNavigateWithScroll();
 
-  // Scroll to top when component mounts
   React.useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
   const stats = [
     {
-      title: "Total Users",
-      value: "12,543",
-      change: "+12%",
-      icon: Users,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
-    },
-    {
-      title: "Products",
-      value: "8,921",
-      change: "+5%",
+      title: "My Products",
+      value: "328",
+      change: "+8%",
       icon: Package,
       color: "text-green-600",
       bgColor: "bg-green-50",
     },
     {
-      title: "Orders Today",
-      value: "234",
-      change: "+18%",
+      title: "Orders",
+      value: "1,234",
+      change: "+3%",
       icon: ShoppingCart,
       color: "text-purple-600",
       bgColor: "bg-purple-50",
     },
     {
       title: "Revenue",
-      value: "$45,231",
-      change: "+23%",
+      value: "$12,450",
+      change: "+11%",
       icon: DollarSign,
       color: "text-emerald-600",
       bgColor: "bg-emerald-50",
     },
+    {
+      title: "Visitors",
+      value: "9,421",
+      change: "+5%",
+      icon: Users,
+      color: "text-blue-600",
+      bgColor: "bg-blue-50",
+    },
   ];
 
   const quickActions = [
-    { title: "Add Product", icon: Package, href: "/admin/products/new" },
-    { title: "Manage Users", icon: Users, href: "/admin/users" },
-    { title: "View Orders", icon: ShoppingCart, href: "/admin/orders" },
-    { title: "Analytics", icon: BarChart3, href: "/admin/analytics" },
-    { title: "Settings", icon: Settings, href: "/admin/settings" },
+    { title: "Add Listing", icon: Package, href: "/seller/products/new" },
+    { title: "Manage Listings", icon: Package, href: "/seller/products" },
+    { title: "View Orders", icon: ShoppingCart, href: "/seller/orders" },
+    { title: "Analytics", icon: BarChart3, href: "/seller/analytics" },
+    { title: "Settings", icon: Settings, href: "/seller/settings" },
   ];
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-black text-gray-900 mb-2">
             Good to see you, {user?.firstName} {user?.lastName}!
           </h1>
-          <p className="text-gray-600">
-            Here's what's happening with your platform today.
-          </p>
+          <p className="text-gray-600">Manage your products and orders.</p>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {stats.map((stat) => (
             <Card
@@ -115,7 +110,6 @@ export const AdminDashboard = () => {
           ))}
         </div>
 
-        {/* Quick Actions */}
         <Card className="border-0 shadow-lg rounded-2xl overflow-hidden mb-8">
           <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
             <CardTitle className="text-xl font-bold">Quick Actions</CardTitle>
@@ -126,6 +120,7 @@ export const AdminDashboard = () => {
                 <Button
                   key={action.title}
                   variant="outline"
+                  onClick={() => navigate(action.href)}
                   className="h-auto p-6 flex flex-col items-center gap-3 hover:bg-purple-50 hover:border-purple-200 transition-all duration-300"
                 >
                   <action.icon className="w-8 h-8 text-purple-600" />
@@ -138,13 +133,11 @@ export const AdminDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-green-600" />
-                Recent Orders
+                <TrendingUp className="w-5 h-5 text-green-600" /> Recent Orders
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -177,8 +170,7 @@ export const AdminDashboard = () => {
           <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Eye className="w-5 h-5 text-blue-600" />
-                Top Products
+                <Eye className="w-5 h-5 text-blue-600" /> Top Products
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">

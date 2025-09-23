@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useWishlist } from "../contexts/WishlistContext";
 import { useSelector } from "react-redux";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuthRedux } from "../hooks/useAuthRedux";
 import { useGetCartQuery } from "../services/api";
 import { useCompare } from "../contexts/CompareContext";
 import { useNavigateWithScroll } from "../utils/navigation";
@@ -25,7 +25,7 @@ import { useAddItemMutation } from "../services/api";
 export const WishlistPage = () => {
   const { items: wishlistItems, removeItem, clearWishlist } = useWishlist();
   const localItems = useSelector((s) => s.cart?.localItems || []);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuthRedux();
   const { data: cartResponse } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
   });

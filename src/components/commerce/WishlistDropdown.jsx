@@ -5,7 +5,7 @@ import { Heart, ShoppingBag, X, Star, BarChart3 } from "lucide-react";
 import { useWishlist } from "../../contexts/WishlistContext";
 import { useCompare } from "../../contexts/CompareContext";
 import { useSelector } from "react-redux";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuthRedux } from "../../hooks/useAuthRedux";
 import { useGetCartQuery } from "../../services/api";
 import { useAddItemMutation } from "../../services/api";
 import { useDispatch } from "react-redux";
@@ -140,7 +140,7 @@ WishlistItem.displayName = "WishlistItem";
 export const WishlistDropdown = ({ isOpen, onClose }) => {
   const { items: wishlistItems, removeItem } = useWishlist();
   const localItems = useSelector((s) => s.cart?.localItems || []);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuthRedux();
   const { data: cartResponse } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
   });

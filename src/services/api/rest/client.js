@@ -66,9 +66,10 @@ apiClient.interceptors.response.use(
           }
         }
       } catch (refreshError) {
-        // Refresh failed, clear tokens and redirect to login
+        // Refresh failed, clear tokens. Don't force navigation here so the
+        // application can decide how to react (e.g., ProtectedRoute will
+        // redirect to login when it detects unauthenticated state).
         tokenStorage.clearAll();
-        window.location.href = "/login";
       }
     }
 

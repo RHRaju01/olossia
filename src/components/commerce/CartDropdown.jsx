@@ -21,6 +21,7 @@ import {
   useUpdateItemMutation,
   useRemoveItemMutation,
 } from "../../services/api";
+import { useAuthRedux } from "../../hooks/useAuthRedux";
 
 // Memoized cart item component
 const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
@@ -106,8 +107,11 @@ const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
 CartItem.displayName = "CartItem";
 
 export const CartDropdown = ({ isOpen, onClose }) => {
-  // Prefer reading cart directly from RTK Query for this UI component.
-  const { data: cartResponse } = useGetCartQuery();
+  const { isAuthenticated } = useAuthRedux();
+  // Prefer reading cart directly from RTK Query for this UI component (skip for guests)
+  const { data: cartResponse } = useGetCartQuery(undefined, {
+    skip: !isAuthenticated,
+  });
   const [updateItemTrigger] = useUpdateItemMutation();
   const [removeItemTrigger] = useRemoveItemMutation();
 

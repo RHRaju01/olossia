@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useCompare } from "../contexts/CompareContext";
 import { useSelector } from "react-redux";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuthRedux } from "../hooks/useAuthRedux";
 import { useGetCartQuery } from "../services/api";
 import { useDispatch } from "react-redux";
 import { addLocalItem } from "../store/cartSlice";
@@ -31,7 +31,7 @@ import { useNavigateWithScroll } from "../utils/navigation";
 export const ComparePage = () => {
   const { items: compareItems, removeItem, clearCompare } = useCompare();
   const localItems = useSelector((s) => s.cart?.localItems || []);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuthRedux();
   const { data: cartResponse } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
   });
