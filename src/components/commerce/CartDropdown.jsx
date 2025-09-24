@@ -10,11 +10,11 @@ import {
   ArrowRight,
   Heart,
   BarChart3,
+  Star,
 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { updateLocalItem, removeLocalItem } from "../../store/cartSlice";
-import { useWishlist } from "../../contexts/WishlistContext";
-import { useCompare } from "../../contexts/CompareContext";
+// wishlist/compare not used in cart dropdown
 import { useNavigate } from "react-router-dom";
 import {
   useGetCartQuery,
@@ -22,9 +22,32 @@ import {
   useRemoveItemMutation,
 } from "../../services/api";
 import { useAuthRedux } from "../../hooks/useAuthRedux";
+import { formatPrice, formatRating } from "../../utils/formatNumbers";
 
 // Memoized cart item component
 const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
+  // normalize possible item shapes (server vs local)
+  const brand =
+    item.brand ||
+    item.product?.brand ||
+    item.product?.brand_name ||
+    item.product?.brands?.name ||
+    "";
+
+  const rating = item.rating || item.product?.rating || 0;
+  const reviews = item.reviews || item.product?.reviews || 0;
+
+  // colors may live in several places: item.colors, item.color (single), product.colors,
+  // product.specifications.available_colors, or product.variants[*].attributes.color
+  let colors = item.colors || (item.color ? [item.color] : []);
+  if ((!colors || colors.length === 0) && item.product) {
+    colors =
+      item.product.colors ||
+      item.product.specifications?.available_colors ||
+      (item.product.variants
+        ? item.product.variants.map((v) => v.attributes?.color).filter(Boolean)
+        : []);
+  }
   return (
     <div className="p-6 border-b border-gray-50 last:border-b-0">
       <div className="flex gap-4">
@@ -45,7 +68,7 @@ const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
         <div className="flex-1 space-y-2">
           <div>
             <p className="text-xs text-purple-600 font-bold uppercase">
-              {item.brand}
+              {brand}
             </p>
             <h4 className="font-semibold text-gray-900 leading-tight">
               {item.name}
@@ -55,12 +78,55 @@ const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
             </p>
           </div>
 
+          {/* Rating */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              {[...Array(5)].map((_, i) => (
+                <Star
+                  key={i}
+                  className={`w-3 h-3 ${
+                    i < Math.floor(rating || 0)
+                      ? "fill-yellow-400 text-yellow-400"
+                      : "text-gray-200"
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-xs text-gray-500">
+              {formatRating(rating)} ({reviews})
+            </span>
+          </div>
+
+          {/* Colors */}
+          {colors && colors.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Colors:</span>
+              <div className="flex gap-1">
+                {colors.slice(0, 3).map((color, index) => (
+                  <div
+                    key={index}
+                    className="w-4 h-4 rounded-full border border-gray-200"
+                    style={{ backgroundColor: color }}
+                    title={color}
+                  />
+                ))}
+                {colors.length > 3 && (
+                  <span className="text-xs text-gray-500">
+                    +{colors.length - 3}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-gray-900">${item.price}</span>
+              <span className="font-bold text-gray-900">
+                ${formatPrice(item.price)}
+              </span>
               {item.originalPrice && (
                 <span className="text-sm text-gray-400 line-through">
-                  ${item.originalPrice}
+                  ${formatPrice(item.originalPrice)}
                 </span>
               )}
             </div>
@@ -88,14 +154,16 @@ const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
                 </Button>
               </div>
 
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => onRemoveItem(item.id)}
-                className="w-8 h-8 rounded-full border-gray-200 hover:border-red-300 hover:bg-red-50"
-              >
-                <X className="w-3 h-3 text-red-500" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => onRemoveItem(item.id)}
+                  className="w-8 h-8 rounded-full border-gray-200 hover:border-red-300 hover:bg-red-50"
+                >
+                  <X className="w-3 h-3 text-red-500" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -121,6 +189,8 @@ export const CartDropdown = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
 
   const cartItems = cartResponse?.data?.items || ctxItems || [];
+
+  // not using wishlist/compare handlers in cart dropdown
 
   const handleUpdateQuantity = useCallback(
     async (itemId, newQuantity) => {
@@ -157,6 +227,8 @@ export const CartDropdown = ({ isOpen, onClose }) => {
     },
     [removeItemTrigger]
   );
+
+  // no wishlist/compare handlers required
 
   if (!isOpen) return null;
 
@@ -224,9 +296,9 @@ export const CartDropdown = ({ isOpen, onClose }) => {
                   <span className="text-gray-600">Subtotal</span>
                   <span className="font-semibold">
                     $
-                    {cartItems
-                      .reduce((s, it) => s + it.price * it.quantity, 0)
-                      .toFixed(2)}
+                    {formatPrice(
+                      cartItems.reduce((s, it) => s + it.price * it.quantity, 0)
+                    )}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -255,7 +327,7 @@ export const CartDropdown = ({ isOpen, onClose }) => {
                       );
                       const shipping =
                         subtotal > 100 ? 0 : subtotal > 0 ? 10 : 0;
-                      return (subtotal + shipping).toFixed(2);
+                      return formatPrice(subtotal + shipping);
                     })()}
                   </span>
                 </div>

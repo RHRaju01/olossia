@@ -208,7 +208,8 @@ export class Product {
           *,
           brands(name),
           categories(name),
-          reviews(rating)
+          reviews(rating),
+          product_variants(id,sku,price,stock_quantity,attributes,images)
         `
         )
         .eq("status", "active");
@@ -350,7 +351,8 @@ export class Product {
           *,
           brands!inner(name),
           categories!inner(name),
-          reviews(rating)
+          reviews(rating),
+          product_variants(id,sku,price,stock_quantity,attributes,images)
         `
         )
         .eq("status", "active")

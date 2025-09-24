@@ -3,6 +3,7 @@ import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
 import { Heart, ShoppingBag, Star, Eye, BarChart3, Check } from "lucide-react";
 import { useNavigateWithScroll } from "../../utils/navigation";
+import { formatPrice, formatRating } from "../../utils/formatNumbers";
 
 export const ProductCard = React.memo(
   ({
@@ -153,7 +154,7 @@ export const ProductCard = React.memo(
                 ))}
               </div>
               <span className="text-sm text-gray-600 font-medium">
-                {product.rating} ({product.reviews})
+                {formatRating(product.rating)} ({product.reviews})
               </span>
             </div>
 
@@ -175,17 +176,21 @@ export const ProductCard = React.memo(
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-2xl font-black text-gray-900">
-                  ${product.price}
+                  ${formatPrice(product.price)}
                 </span>
                 {product.originalPrice && (
                   <span className="text-lg text-gray-400 line-through">
-                    ${product.originalPrice}
+                    ${formatPrice(product.originalPrice)}
                   </span>
                 )}
               </div>
               {product.discount > 0 && (
                 <span className="text-sm font-bold text-green-600">
-                  Save ${product.originalPrice - product.price}
+                  Save $
+                  {formatPrice(
+                    Number(product.originalPrice || 0) -
+                      Number(product.price || 0)
+                  )}
                 </span>
               )}
             </div>

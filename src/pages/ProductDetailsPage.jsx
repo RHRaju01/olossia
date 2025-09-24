@@ -423,7 +423,7 @@ export const ProductDetailsPage = () => {
                 <span className="text-sm text-gray-600">
                   Total:{" "}
                   <span className="font-bold text-gray-900">
-                    ${(product.price * quantity).toFixed(2)}
+                    ${formatPrice(product.price * quantity)}
                   </span>
                 </span>
               </div>
@@ -436,7 +436,7 @@ export const ProductDetailsPage = () => {
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-4 rounded-xl text-lg shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <ShoppingBag className="w-5 h-5 mr-3" />
-                Add to Cart - ${(product.price * quantity).toFixed(2)}
+                Add to Cart - ${formatPrice(product.price * quantity)}
               </Button>
 
               <div className="grid grid-cols-2 gap-4">

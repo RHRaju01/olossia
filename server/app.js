@@ -7,17 +7,19 @@ import routes from "./routes/index.js";
 // Build express app (exported for testing)
 const app = express();
 
-// Security middleware
-app.use(securityHeaders);
-app.use(generalLimiter);
-
-// CORS configuration
+// CORS configuration - register early so preflight (OPTIONS) returns proper headers
 const corsOptions = {
   origin: process.env.FRONTEND_URL || "http://localhost:5173",
   credentials: true,
   optionsSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
+// Ensure OPTIONS preflight on all routes responds with CORS headers
+app.options("*", cors(corsOptions));
+
+// Security middleware
+app.use(securityHeaders);
+app.use(generalLimiter);
 
 // Logging
 app.use(morgan("combined"));

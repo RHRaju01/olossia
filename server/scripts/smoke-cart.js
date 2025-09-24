@@ -45,12 +45,14 @@ function pickToken(payload) {
 
   // 2: register (ignore failure if already exists)
   // Use the test user details (must match validation: firstName/lastName, confirmPassword)
+  // use a timestamped email so repeated runs don't conflict
+  const _now = Date.now();
   const regBody = {
-    email: "rhraju01@gmail.com",
+    email: `smoke+${_now}@example.com`,
     password: "Pass1234!",
     confirmPassword: "Pass1234!",
-    firstName: "Robiul",
-    lastName: "Hossain",
+    firstName: "Smoke",
+    lastName: `Test${_now}`,
   };
   const reg = await fetchJson(`${BASE}/auth/register`, {
     method: "POST",

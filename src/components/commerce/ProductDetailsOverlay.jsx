@@ -15,6 +15,7 @@ import { useDispatch } from "react-redux";
 import { addLocalItem } from "../../store/cartSlice";
 import { useWishlist } from "../../contexts/WishlistContext";
 import { useAddItemMutation } from "../../services/api";
+import { formatPrice, formatRating } from "../../utils/formatNumbers";
 
 export const ProductDetailsOverlay = ({
   product,
@@ -87,29 +88,21 @@ export const ProductDetailsOverlay = ({
 
   const handleAddToWishlist = useCallback(async () => {
     if (!overlayProduct) return;
-    await addToWishlist({
-      ...overlayProduct,
-      image: overlayProduct.images[0],
-      colors: overlayProduct.colors.map((c) => c.value),
-    });
+    try {
+      await addToWishlist({ product_id: overlayProduct.id });
+    } catch (e) {
+      // noop - wishlist failures are non-blocking for the overlay
+    }
   }, [addToWishlist, overlayProduct]);
-
   if (!isOpen || !product) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal content */}
-      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto scrollbar-hide">
-        <Card className="border-0 shadow-2xl rounded-3xl overflow-hidden bg-white">
-          <CardContent className="p-0">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative max-w-6xl w-full mx-auto">
+        <Card>
+          <CardContent>
+            <div className="flex items-start justify-between gap-4 p-6">
               <div>
                 <p className="text-sm text-purple-600 font-bold uppercase tracking-wider">
                   {overlayProduct.brand}
@@ -118,6 +111,7 @@ export const ProductDetailsOverlay = ({
                   {overlayProduct.name}
                 </h2>
               </div>
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -180,7 +174,7 @@ export const ProductDetailsOverlay = ({
                       <Star
                         key={i}
                         className={`w-5 h-5 ${
-                          i < Math.floor(overlayProduct.rating || 4.5)
+                          i < Math.floor(Number(overlayProduct.rating) || 4.5)
                             ? "fill-yellow-400 text-yellow-400"
                             : "text-gray-200"
                         }`}
@@ -188,24 +182,27 @@ export const ProductDetailsOverlay = ({
                     ))}
                   </div>
                   <span className="text-sm text-gray-600 font-medium">
-                    {overlayProduct.rating || 4.5} (
-                    {overlayProduct.reviews || 100} reviews)
+                    {formatRating(overlayProduct.rating)} (
+                    {overlayProduct.reviews || 0} reviews)
                   </span>
                 </div>
 
                 {/* Price */}
                 <div className="flex items-center gap-4">
                   <span className="text-3xl font-black text-gray-900">
-                    ${overlayProduct.price}
+                    ${formatPrice(overlayProduct.price)}
                   </span>
                   {overlayProduct.originalPrice && (
                     <>
                       <span className="text-xl text-gray-400 line-through">
-                        ${overlayProduct.originalPrice}
+                        ${formatPrice(overlayProduct.originalPrice)}
                       </span>
                       <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-bold">
                         Save $
-                        {overlayProduct.originalPrice - overlayProduct.price}
+                        {formatPrice(
+                          (Number(overlayProduct.originalPrice) || 0) -
+                            (Number(overlayProduct.price) || 0)
+                        )}
                       </span>
                     </>
                   )}
@@ -308,7 +305,10 @@ export const ProductDetailsOverlay = ({
                     <span className="text-sm text-gray-600">
                       Total:{" "}
                       <span className="font-bold text-gray-900">
-                        ${(overlayProduct.price * quantity).toFixed(2)}
+                        $
+                        {formatPrice(
+                          Number(overlayProduct.price || 0) * quantity
+                        )}
                       </span>
                     </span>
                   </div>
@@ -322,7 +322,9 @@ export const ProductDetailsOverlay = ({
                   >
                     <ShoppingBag className="w-4 h-4 mr-2" />
                     Add to Cart - $
-                    {(overlayProduct.price * quantity).toFixed(2)}
+                    {formatPrice(
+                      (Number(overlayProduct.price) || 0) * quantity
+                    )}
                   </Button>
 
                   <div className="grid grid-cols-2 gap-3">

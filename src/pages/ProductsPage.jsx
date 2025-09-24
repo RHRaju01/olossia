@@ -16,7 +16,12 @@ import {
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { useAuthRedux } from "../hooks/useAuthRedux";
-import { useGetCartQuery } from "../services/api";
+import {
+  useGetCartQuery,
+  useAddItemMutation,
+  useRemoveItemMutation,
+  useGetProductsQuery,
+} from "../services/api";
 import { useDispatch } from "react-redux";
 import { addLocalItem } from "../store/cartSlice";
 import { useWishlist } from "../contexts/WishlistContext";
@@ -24,7 +29,7 @@ import { useCompare } from "../contexts/CompareContext";
 import { useNavigateWithScroll } from "../utils/navigation";
 import { ProductDetailsOverlay } from "../components/commerce/ProductDetailsOverlay";
 import { ProductActions } from "../components/commerce/ProductActions";
-import { useAddItemMutation } from "../services/api";
+import { formatPrice, formatRating } from "../utils/formatNumbers";
 
 export const ProductsPage = () => {
   const localItems = useSelector((s) => s.cart?.localItems || []);
@@ -35,10 +40,6 @@ export const ProductsPage = () => {
   const serverItems = cartResponse?.data?.items || [];
   const sourceItems = isAuthenticated ? serverItems : localItems;
 
-  const isInCart = useCallback(
-    (productId) => sourceItems.some((item) => item.product_id === productId),
-    [sourceItems]
-  );
   const dispatch = useDispatch();
   const { addItem: addToWishlist, isInWishlist } = useWishlist();
   const { addItem: addToCompare, isInCompare } = useCompare();
@@ -55,96 +56,99 @@ export const ProductsPage = () => {
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
 
-  // Mock products data
-  const products = [
-    {
-      id: "silk-midi-dress",
-      name: "Silk Midi Dress",
-      brand: "ZARA",
-      price: 129,
-      originalPrice: 189,
-      image:
-        "https://images.pexels.com/photos/1926769/pexels-photo-1926769.jpeg?auto=compress&cs=tinysrgb&w=500",
-      category: "women",
-      isNew: true,
-      discount: 32,
-      rating: 4.8,
-      reviews: 124,
-      colors: ["#FF6B9D", "#000000", "#FFFFFF"],
-    },
-    {
-      id: "premium-cotton-blazer",
-      name: "Premium Cotton Blazer",
-      brand: "H&M",
-      price: 89,
-      image:
-        "https://images.pexels.com/photos/1040945/pexels-photo-1040945.jpeg?auto=compress&cs=tinysrgb&w=500",
-      category: "men",
-      isNew: false,
-      discount: 0,
-      rating: 4.6,
-      reviews: 89,
-      colors: ["#8B4513", "#000000", "#708090"],
-    },
-    {
-      id: "vintage-denim-jacket",
-      name: "Vintage Denim Jacket",
-      brand: "LEVI'S",
-      price: 159,
-      originalPrice: 199,
-      image:
-        "https://images.pexels.com/photos/1620760/pexels-photo-1620760.jpeg?auto=compress&cs=tinysrgb&w=500",
-      category: "women",
-      isNew: false,
-      discount: 20,
-      rating: 4.9,
-      reviews: 203,
-      colors: ["#4169E1", "#000080", "#87CEEB"],
-    },
-    {
-      id: "floral-maxi-dress",
-      name: "Floral Maxi Dress",
-      brand: "MANGO",
-      price: 99,
-      image:
-        "https://images.pexels.com/photos/1927259/pexels-photo-1927259.jpeg?auto=compress&cs=tinysrgb&w=500",
-      category: "women",
-      isNew: true,
-      discount: 0,
-      rating: 4.7,
-      reviews: 156,
-      colors: ["#FFB6C1", "#FFC0CB", "#FF69B4"],
-    },
-    {
-      id: "leather-crossbody-bag",
-      name: "Leather Crossbody Bag",
-      brand: "COACH",
-      price: 299,
-      originalPrice: 399,
-      image:
-        "https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg?auto=compress&cs=tinysrgb&w=500",
-      category: "accessories",
-      isNew: false,
-      discount: 25,
-      rating: 4.9,
-      reviews: 67,
-      colors: ["#8B4513", "#000000", "#D2691E"],
-    },
-    {
-      id: "minimalist-sneakers",
-      name: "Minimalist Sneakers",
-      brand: "NIKE",
-      price: 119,
-      image:
-        "https://images.pexels.com/photos/1464625/pexels-photo-1464625.jpeg?auto=compress&cs=tinysrgb&w=500",
-      category: "shoes",
-      isNew: true,
-      discount: 0,
-      rating: 4.8,
-      reviews: 234,
-      colors: ["#FFFFFF", "#000000", "#FF6B9D"],
-    },
-  ];
+  // Use server products if available. Keep the previous mock products as a commented fallback.
+  const { data: productsResponse, isLoading: productsLoading } =
+    useGetProductsQuery();
+  // support both shapes: { data: { products: [...] } } or { data: [...] }
+  const serverProductsList =
+    (productsResponse &&
+      productsResponse.data &&
+      productsResponse.data.products) ||
+    productsResponse?.data ||
+    productsResponse ||
+    [];
+
+  const products =
+    serverProductsList.map((p) => {
+      // Prefer explicit brand name fields returned by the API, fall back to nested relations or id
+      const brandName =
+        p.brand_name ||
+        (p.brands && p.brands.name) ||
+        (p.brand && p.brand.name) ||
+        p.brand_id ||
+        "";
+
+      // Derive color swatches from multiple possible shapes:
+      //  - p.colors (array of hex strings)
+      //  - p.variants (array) -> v.attributes.color
+      //  - p._server?.variants (some handlers keep original payload under _server)
+      const rawColors = [];
+      if (Array.isArray(p.colors) && p.colors.length > 0) {
+        rawColors.push(...p.colors);
+      }
+      // Also support product-level specifications.available_colors
+      if (
+        p.specifications &&
+        Array.isArray(p.specifications.available_colors) &&
+        p.specifications.available_colors.length > 0
+      ) {
+        rawColors.push(...p.specifications.available_colors);
+      }
+      if (Array.isArray(p.variants) && p.variants.length > 0) {
+        p.variants.forEach((v) => {
+          if (v && v.attributes && v.attributes.color)
+            rawColors.push(v.attributes.color);
+          else if (v && v.attributes && typeof v.attributes === "string") {
+            try {
+              const parsed = JSON.parse(v.attributes);
+              if (parsed.color) rawColors.push(parsed.color);
+            } catch (e) {
+              // ignore
+            }
+          }
+        });
+      }
+      if (p._server && Array.isArray(p._server.variants)) {
+        p._server.variants.forEach((v) => {
+          if (v && v.attributes && v.attributes.color)
+            rawColors.push(v.attributes.color);
+        });
+      }
+
+      // Normalize and dedupe colors, fallback to a single placeholder if empty
+      const colors = Array.from(
+        new Set(rawColors.map((c) => (c || "").toString()))
+      ).filter(Boolean);
+
+      return {
+        // Use server id (UUID) as canonical id for matching with cart items
+        id: p.id || p.slug,
+        slug: p.slug || null,
+        name: p.name,
+        brand: brandName,
+        price: Number(p.price),
+        originalPrice: p.compare_price ? Number(p.compare_price) : null,
+        image:
+          Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : null,
+        category: p.category?.slug || p.category_id || "",
+        isNew: p.is_featured || false,
+        discount: p.compare_price
+          ? Math.round(((p.compare_price - p.price) / p.compare_price) * 100)
+          : 0,
+        rating: p.avg_rating || p.rating || 0,
+        reviews: p.review_count || p.reviews_count || 0,
+        colors: colors.length > 0 ? colors : [],
+        // Keep original server object for advanced flows
+        _server: p,
+      };
+    }) ||
+    /*
+  // Mock products data (commented fallback) - uncomment if you prefer the static UI
+  [
+    { id: "silk-midi-dress", name: "Silk Midi Dress", brand: "ZARA", price: 129, originalPrice: 189, image: "https://images.pexels.com/photos/1926769/pexels-photo-1926769.jpeg?auto=compress&cs=tinysrgb&w=500", category: "women", isNew: true, discount: 32, rating: 4.8, reviews: 124, colors: ["#FF6B9D", "#000000", "#FFFFFF"] },
+    // ... other mocks omitted for brevity
+  ]
+  */ [];
 
   const categories = [
     { id: "all", name: "All Products", count: products.length },
@@ -212,23 +216,92 @@ export const ProductsPage = () => {
     await addToCompare(product);
   };
   const [addItemTrigger] = useAddItemMutation();
+  const [removeItemTrigger] = useRemoveItemMutation();
 
-  const handleAddToCart = async (product) => {
-    try {
-      await addItemTrigger({ product_id: product.id, quantity: 1 }).unwrap();
-    } catch (e) {
-      // fallback to local redux guest cart
-      dispatch(
-        addLocalItem({
-          id: `local-${Date.now()}`,
-          product_id: product.id,
-          variant_id: null,
-          quantity: 1,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-        })
-      );
+  // Determine if product is in cart (match by product_id or slug)
+  const isInCart = useCallback(
+    (productId) =>
+      sourceItems.some((item) => {
+        if (!item) return false;
+        // item may be { product_id } or { product: { id, slug } } or variant keyed
+        if (item.product_id && item.product_id === productId) return true;
+        if (item.sku && item.sku === productId) return true;
+        if (
+          item.product &&
+          (item.product.id === productId || item.product.slug === productId)
+        )
+          return true;
+        return false;
+      }),
+    [sourceItems]
+  );
+
+  // Find cart item id for a product (server-side)
+  const findCartItemId = (productId) => {
+    const it = sourceItems.find((i) => {
+      if (!i) return false;
+      if (i.product_id && i.product_id === productId) return true;
+      if (i.sku && i.sku === productId) return true;
+      if (
+        i.product &&
+        (i.product.id === productId || i.product.slug === productId)
+      )
+        return true;
+      return false;
+    });
+    return it ? it.id : null;
+  };
+
+  const handleToggleCart = async (product) => {
+    // If user is authenticated and item exists on server, remove it; else add
+    if (isAuthenticated) {
+      const existingId = findCartItemId(product.id);
+      if (existingId) {
+        try {
+          await removeItemTrigger(existingId).unwrap();
+        } catch (e) {
+          console.warn("remove failed, not removed from UI", e);
+        }
+        return;
+      }
+
+      try {
+        await addItemTrigger({ product_id: product.id, quantity: 1 }).unwrap();
+      } catch (e) {
+        console.warn("add failed, falling back to local", e);
+        dispatch(
+          addLocalItem({
+            id: `local-${Date.now()}`,
+            product_id: product.id,
+            variant_id: null,
+            quantity: 1,
+            name: product.name,
+            price: product.price,
+            image: product.image,
+          })
+        );
+      }
+    } else {
+      // Guest: local redux cart toggle behavior
+      const localExists = localItems.some((it) => it.product_id === product.id);
+      if (localExists) {
+        const localId = localItems.find(
+          (it) => it.product_id === product.id
+        ).id;
+        dispatch({ type: "cart/removeLocalItem", payload: localId });
+      } else {
+        dispatch(
+          addLocalItem({
+            id: `local-${Date.now()}`,
+            product_id: product.id,
+            variant_id: null,
+            quantity: 1,
+            name: product.name,
+            price: product.price,
+            image: product.image,
+          })
+        );
+      }
     }
   };
 
@@ -660,13 +733,13 @@ export const ProductsPage = () => {
                               ))}
                             </div>
                             <span className="text-sm text-gray-600 font-medium">
-                              {product.rating} ({product.reviews})
+                              {formatRating(product.rating)} ({product.reviews})
                             </span>
                           </div>
 
                           {/* Colors */}
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-500 font-medium">
+                            <span className="text-sm text-gray-600 font-medium">
                               Colors:
                             </span>
                             <div className="flex gap-1">
@@ -684,17 +757,21 @@ export const ProductsPage = () => {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <span className="text-2xl font-black text-gray-900">
-                                ${product.price}
+                                ${formatPrice(product.price)}
                               </span>
                               {product.originalPrice && (
                                 <span className="text-lg text-gray-400 line-through">
-                                  ${product.originalPrice}
+                                  ${formatPrice(product.originalPrice)}
                                 </span>
                               )}
                             </div>
                             {product.discount > 0 && (
                               <span className="text-sm font-bold text-green-600">
-                                Save ${product.originalPrice - product.price}
+                                Save $
+                                {formatPrice(
+                                  Number(product.originalPrice || 0) -
+                                    Number(product.price || 0)
+                                )}
                               </span>
                             )}
                           </div>

@@ -18,6 +18,35 @@ export const rtkCartApi = baseApi.injectEndpoints({
     }),
     addItem: build.mutation({
       query: (item) => ({ url: "/cart/items", method: "POST", body: item }),
+      async onQueryStarted(arg, { dispatch, queryFulfilled, getState }) {
+        // Optimistic update: add a temporary item to the cached getCart query
+        try {
+          const patchResult = dispatch(
+            baseApi.util.updateQueryData("getCart", undefined, (draft) => {
+              const temp = {
+                id: `temp-${Date.now()}`,
+                product_id: arg.product_id,
+                variant_id: arg.variant_id || null,
+                quantity: arg.quantity || 1,
+                // minimal product fields to keep UI stable
+                name: arg.name || null,
+                price: arg.price || null,
+                image: arg.image || null,
+              };
+              draft.data = draft.data || { items: [] };
+              draft.data.items = draft.data.items || [];
+              draft.data.items.push(temp);
+            })
+          );
+
+          await queryFulfilled;
+          // No further action: server response will be reflected automatically
+          return patchResult;
+        } catch (err) {
+          // Rollback is automatic by applying inverse of patchResult
+          console.warn("addItem optimistic update failed", err);
+        }
+      },
     }),
     updateItem: build.mutation({
       query: ({ itemId, update }) => ({
@@ -28,6 +57,24 @@ export const rtkCartApi = baseApi.injectEndpoints({
     }),
     removeItem: build.mutation({
       query: (itemId) => ({ url: `/cart/items/${itemId}`, method: "DELETE" }),
+      async onQueryStarted(itemId, { dispatch, queryFulfilled }) {
+        // Optimistic update: remove item from getCart cache immediately
+        const patchResult = dispatch(
+          baseApi.util.updateQueryData("getCart", undefined, (draft) => {
+            if (!draft || !draft.data || !Array.isArray(draft.data.items))
+              return;
+            draft.data.items = draft.data.items.filter(
+              (it) => it.id !== itemId
+            );
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch (err) {
+          patchResult.undo();
+          console.warn("removeItem optimistic rollback", err);
+        }
+      },
     }),
     clearCart: build.mutation({
       query: () => ({ url: "/cart", method: "DELETE" }),

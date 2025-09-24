@@ -350,7 +350,7 @@ export const CartPage = () => {
                             <p className="text-sm text-gray-600">
                               Subtotal:{" "}
                               <span className="font-bold text-gray-900">
-                                ${(item.price * item.quantity).toFixed(2)}
+                                ${formatPrice(item.price * item.quantity)}
                               </span>
                             </p>
                           </div>
@@ -443,7 +443,7 @@ export const CartPage = () => {
                           Subtotal ({totals.itemCount} items)
                         </span>
                         <span className="font-semibold">
-                          ${totals.subtotal.toFixed(2)}
+                          ${formatPrice(totals.subtotal)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
@@ -451,7 +451,7 @@ export const CartPage = () => {
                         <span className="font-semibold text-green-600">
                           {totals.shipping === 0
                             ? "Free"
-                            : `$${totals.shipping.toFixed(2)}`}
+                            : `$${formatPrice(totals.shipping)}`}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
@@ -461,7 +461,7 @@ export const CartPage = () => {
                       <Separator />
                       <div className="flex justify-between text-lg font-bold">
                         <span>Total</span>
-                        <span>${totals.total.toFixed(2)}</span>
+                        <span>${formatPrice(totals.total)}</span>
                       </div>
                     </div>
 
