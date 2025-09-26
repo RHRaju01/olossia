@@ -14,32 +14,44 @@ import {
   Check,
   BarChart3,
 } from "lucide-react";
-import { useSelector } from "react-redux";
+// cart is managed via CartContext for local/demo flows
+// import { useSelector } from "react-redux";
 import { useAuthRedux } from "../hooks/useAuthRedux";
 import { useGetCartQuery } from "../services/api";
 import { useWishlist } from "../contexts/WishlistContext";
 import { useCompare } from "../contexts/CompareContext";
 import { useParams } from "react-router-dom";
 import { useNavigateWithScroll } from "../utils/navigation";
-import { useDispatch } from "react-redux";
-import { addLocalItem } from "../store/cartSlice";
-import { useAddItemMutation } from "../services/api";
+import { useCart } from "../contexts/Cart/CartContext";
+import { useAddItemMutation, useRemoveItemMutation } from "../services/api";
+import { formatPrice } from "../utils/formatNumbers";
 
 export const ProductDetailsPage = () => {
   const { id } = useParams();
-  const localItems = useSelector((s) => s.cart?.localItems || []);
+  const { items: cartItems, addItem: addLocalCartItem, removeItem: removeLocalCartItem } = useCart();
   const { isAuthenticated } = useAuthRedux();
   const { data: cartResponse } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
   });
   const serverItems = cartResponse?.data?.items || [];
-  const sourceItems = isAuthenticated ? serverItems : localItems;
+  const sourceItems = isAuthenticated ? serverItems : cartItems;
 
   const isInCart = (productId) =>
-    sourceItems.some((item) => item.product_id === productId);
-  const dispatch = useDispatch();
+    sourceItems.some((item) => {
+      if (!item) return false;
+      const candidateIds = new Set();
+      if (item.product_id) candidateIds.add(item.product_id);
+      if (item.id) candidateIds.add(item.id);
+      if (item.sku) candidateIds.add(item.sku);
+      if (item.product) {
+        if (item.product.id) candidateIds.add(item.product.id);
+        if (item.product.slug) candidateIds.add(item.product.slug);
+      }
+      return candidateIds.has(productId) || candidateIds.has(String(productId));
+    });
   const [addItemTrigger] = useAddItemMutation();
-  const { addItem: addToWishlist, isInWishlist } = useWishlist();
+  const [removeItemTrigger] = useRemoveItemMutation();
+  const { addItem: addToWishlist, isInWishlist, removeItem: removeFromWishlist, items: wishlistItems } = useWishlist();
   const { addItem: addToCompare, isInCompare } = useCompare();
   const navigate = useNavigateWithScroll();
 
@@ -126,35 +138,87 @@ export const ProductDetailsPage = () => {
     ],
   };
 
+  const findCartItemId = (productId) => {
+    const it = sourceItems.find((i) => {
+      if (!i) return false;
+      if (i.product_id && i.product_id === productId) return true;
+      if (i.sku && i.sku === productId) return true;
+      if (i.id && i.id === productId) return true;
+      if (i.product && (i.product.id === productId || i.product.slug === productId)) return true;
+      return false;
+    });
+    return it ? it.id : null;
+  };
+
   const handleAddToCart = async () => {
-    const cartItem = {
-      ...product,
+    // Toggle behaviour: if in cart then remove, else add
+    if (isAuthenticated) {
+      const existingId = findCartItemId(product.id);
+      if (existingId) {
+        try {
+          await removeItemTrigger(existingId).unwrap();
+          return;
+        } catch (e) {
+          console.warn('server remove failed, not removed from UI', e);
+        }
+      }
+
+      try {
+        await addItemTrigger({ product_id: product.id, quantity }).unwrap();
+        return;
+      } catch (e) {
+        console.warn('add failed, falling back to local', e);
+      }
+    }
+
+    // Guest/local toggle
+    const localExists = cartItems.find((it) => {
+      if (!it) return false;
+      const ids = [it.product_id, it.id, it.sku];
+      if (it.product) ids.push(it.product.id, it.product.slug);
+      return ids.some((x) => x === product.id || String(x) === String(product.id));
+    });
+
+    if (localExists) {
+      const localId = localExists.id;
+      // remove from local cart
+      removeLocalCartItem(localId);
+      return;
+    }
+
+    addLocalCartItem({
+      id: `local-${Date.now()}`,
+      product_id: product.id,
+      variant_id: null,
       quantity,
+      name: product.name,
+      brand: product.brand,
+      price: product.price,
+      originalPrice: product.originalPrice || null,
+      image: product.images[0],
       size: selectedSize,
       color: product.colors[selectedColor].name,
-      image: product.images[0],
-    };
-
-    try {
-      await addItemTrigger({ product_id: product.id, quantity }).unwrap();
-    } catch (e) {
-      dispatch(
-        addLocalItem({
-          id: `local-${Date.now()}`,
-          product_id: product.id,
-          variant_id: null,
-          quantity,
-          name: product.name,
-          price: product.price,
-          image: product.images[0],
-          size: selectedSize,
-          color: product.colors[selectedColor].name,
-        })
-      );
-    }
+      rating: product.rating || null,
+      reviews: product.reviews || null,
+      inStock: product.inStock !== undefined ? product.inStock : true,
+      colors: product.colors?.map((c) => c.value || c) || [],
+    });
   };
 
   const handleAddToWishlist = async () => {
+    // Toggle behaviour: remove if present, else add
+    const existing = wishlistItems.find((it) => {
+      if (!it) return false;
+      const ids = [it.product_id, it.id, it.sku];
+      if (it.product) ids.push(it.product.id, it.product.slug);
+      return ids.some((x) => x === product.id || String(x) === String(product.id));
+    });
+
+    if (existing) {
+      await removeFromWishlist(existing.id);
+      return;
+    }
+
     await addToWishlist({
       ...product,
       image: product.images[0],
@@ -433,10 +497,14 @@ export const ProductDetailsPage = () => {
             <div className="space-y-4">
               <Button
                 onClick={handleAddToCart}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-4 rounded-xl text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                className={`w-full font-bold py-4 rounded-xl text-lg shadow-lg hover:shadow-xl transition-all duration-300 ${
+                  isInCart(product.id)
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
+                    : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white'
+                }`}
               >
-                <ShoppingBag className="w-5 h-5 mr-3" />
-                Add to Cart - ${formatPrice(product.price * quantity)}
+                <ShoppingBag className={`w-5 h-5 mr-3 ${isInCart(product.id) ? 'text-white' : ''}`} />
+                {isInCart(product.id) ? 'Added to Cart - ' : 'Add to Cart - '} ${formatPrice(product.price * quantity)}
               </Button>
 
               <div className="grid grid-cols-2 gap-4">

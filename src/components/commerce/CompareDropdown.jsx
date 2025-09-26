@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useRef, useState, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
 import {
@@ -12,12 +12,11 @@ import {
 } from "lucide-react";
 import { useCompare } from "../../contexts/CompareContext";
 import { useWishlist } from "../../contexts/WishlistContext";
-import { useSelector } from "react-redux";
+import { useSelector /* local cart via context now */ } from "react-redux";
 import { useAuthRedux } from "../../hooks/useAuthRedux";
 import { useGetCartQuery } from "../../services/api";
-import { useAddItemMutation } from "../../services/api";
-import { useDispatch } from "react-redux";
-import { addLocalItem } from "../../store/cartSlice";
+import { useAddItemMutation, useRemoveItemMutation } from "../../services/api";
+import { useCart } from "../../contexts/Cart/CartContext";
 import { useNavigate } from "react-router-dom";
 
 // Memoized compare item component
@@ -27,8 +26,9 @@ const CompareItem = React.memo(
     onRemoveFromCompare,
     onAddToWishlist,
     onAddToCart,
-    isInWishlist,
-    isInCart,
+    isInWishlist, // boolean
+    isInCart, // boolean
+    isPending,
   }) => {
     return (
       <div className="p-6 border-b border-gray-50 last:border-b-0">
@@ -104,15 +104,13 @@ const CompareItem = React.memo(
                   size="icon"
                   onClick={() => onAddToWishlist(item)}
                   className={`w-8 h-8 rounded-full border-gray-200 ${
-                    isInWishlist(item.product_id)
+                    isInWishlist
                       ? "bg-red-50 border-red-300 text-red-600"
                       : "hover:border-red-300 hover:bg-red-50"
                   }`}
                 >
                   <Heart
-                    className={`w-3 h-3 text-red-600 ${
-                      isInWishlist(item.product_id) ? "fill-current" : ""
-                    }`}
+                    className={`w-3 h-3 text-red-600 ${isInWishlist ? "fill-current" : ""}`}
                   />
                 </Button>
                 <Button
@@ -120,12 +118,25 @@ const CompareItem = React.memo(
                   size="icon"
                   onClick={() => onAddToCart(item)}
                   className={`w-8 h-8 rounded-full border-gray-200 ${
-                    isInCart(item.product_id)
+                    isInCart
                       ? "bg-purple-50 border-purple-300 text-purple-600"
                       : "hover:border-purple-300 hover:bg-purple-50"
                   }`}
+                  disabled={isPending}
                 >
-                  <ShoppingBag className="w-3 h-3 text-purple-600" />
+                  {isPending ? (
+                    <svg
+                      className="w-3 h-3 animate-spin text-purple-600"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeOpacity="0.25" />
+                      <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  ) : (
+                    <ShoppingBag className="w-3 h-3 text-purple-600" />
+                  )}
                 </Button>
                 <Button
                   variant="outline"
@@ -148,19 +159,56 @@ CompareItem.displayName = "CompareItem";
 
 export const CompareDropdown = ({ isOpen, onClose }) => {
   const { items: compareItems, removeItem, clearError, error } = useCompare();
-  const { addItem: addToWishlist, isInWishlist } = useWishlist();
-  const localItems = useSelector((s) => s.cart?.localItems || []);
+  const { addItem: addToWishlist, isInWishlist, removeItem: removeFromWishlist, items: wishlistItems } = useWishlist();
   const { isAuthenticated } = useAuthRedux();
   const { data: cartResponse } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
   });
+  const { items: cartItems, addItem: addLocalCartItem, removeItem: removeLocalCartItem } = useCart();
   const serverItems = cartResponse?.data?.items || [];
-  const sourceItems = isAuthenticated ? serverItems : localItems;
+  const sourceItems = isAuthenticated ? serverItems : cartItems;
+
+  // pending toggles to prevent duplicate add/remove requests for the same product
+  const pendingRef = useRef(new Set());
+  const [, setTick] = useState(0); // state tick to force rerenders when pendingRef changes
+  const cartItemsRef = useRef(cartItems);
+  const serverItemsRef = useRef(serverItems);
+
+  useEffect(() => {
+    cartItemsRef.current = cartItems;
+  }, [cartItems]);
+
+  useEffect(() => {
+    serverItemsRef.current = serverItems;
+  }, [serverItems]);
+
+  // small helper to wait for a condition (polling)
+  const waitFor = async (fn, timeout = 1000, interval = 50) => {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      if (fn()) return true;
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, interval));
+    }
+    return false;
+  };
 
   const isInCart = (productId) =>
-    sourceItems.some((item) => item.product_id === productId);
+    sourceItems.some((item) => {
+      if (!item) return false;
+      const candidateIds = new Set();
+      if (item.product_id) candidateIds.add(item.product_id);
+      if (item.id) candidateIds.add(item.id);
+      if (item.sku) candidateIds.add(item.sku);
+      if (item.product) {
+        if (item.product.id) candidateIds.add(item.product.id);
+        if (item.product.slug) candidateIds.add(item.product.slug);
+      }
+      return candidateIds.has(productId) || candidateIds.has(String(productId));
+    });
   const [addItemTrigger] = useAddItemMutation();
-  const dispatch = useDispatch();
+  const [removeItemTrigger] = useRemoveItemMutation ? useRemoveItemMutation() : [null];
+  // dispatch not needed for local cart fallbacks
   const navigate = useNavigate();
 
   const handleRemoveFromCompare = useCallback(
@@ -184,39 +232,127 @@ export const CompareDropdown = ({ isOpen, onClose }) => {
         colors: item.colors,
       };
 
+      const existing = wishlistItems.find((it) => {
+        if (!it) return false;
+        const ids = [it.product_id, it.id, it.sku];
+        if (it.product) ids.push(it.product.id, it.product.slug);
+        return ids.some((x) => x === product.id || String(x) === String(product.id));
+      });
+
+      if (existing) {
+        await removeFromWishlist(existing.id);
+        return;
+      }
+
       await addToWishlist(product);
     },
-    [addToWishlist]
+    [addToWishlist, removeFromWishlist, wishlistItems]
   );
 
   const handleAddToCart = useCallback(
     async (item) => {
-      const product = {
-        id: item.product_id,
+      // prefer product-level ids; fall back to entry id only as last resort
+      const productId = item.product?.id ?? item.product_id ?? item.sku ?? item.id;
+      const canonicalId = String(item.product?.id ?? item.product_id ?? item.sku ?? item.product?.slug ?? item.id ?? ("p-" + (item.product_id ?? item.id ?? Date.now())));
+      const pendingKey = canonicalId;
+
+      // if a toggle is already in-flight for this product, ignore
+      if (pendingRef.current.has(pendingKey)) return;
+      pendingRef.current.add(pendingKey);
+      setTick((t) => t + 1);
+
+      if (isAuthenticated) {
+        const existing = serverItems.find((it) => {
+          if (!it) return false;
+          const ids = [it.product_id, it.id, it.sku];
+          if (it.product) ids.push(it.product.id, it.product.slug);
+          return ids.some((x) => x === productId || String(x) === canonicalId);
+        });
+        if (existing && removeItemTrigger) {
+          try {
+            await removeItemTrigger(existing.id).unwrap();
+            // wait for serverItems to reflect removal
+            await waitFor(() => !serverItemsRef.current.some((it) => {
+              if (!it) return false;
+              const ids = [it.product_id, it.id, it.sku];
+              if (it.product) ids.push(it.product.id, it.product.slug);
+              return ids.some((x) => x === productId || String(x) === canonicalId);
+            }), 1500);
+            pendingRef.current.delete(pendingKey);
+            setTick((t) => t + 1);
+            return;
+          } catch (e) {
+            console.warn('server remove failed, falling back to local remove', e);
+          }
+        }
+
+        try {
+          await addItemTrigger({ product_id: productId, quantity: 1 }).unwrap();
+          // wait for serverItems to reflect addition
+          await waitFor(() => serverItemsRef.current.some((it) => {
+            if (!it) return false;
+            const ids = [it.product_id, it.id, it.sku];
+            if (it.product) ids.push(it.product.id, it.product.slug);
+            return ids.some((x) => x === productId || String(x) === canonicalId);
+          }), 1500);
+          pendingRef.current.delete(pendingKey);
+          setTick((t) => t + 1);
+          return;
+        } catch (e) {
+          console.warn('server add failed, falling back to local', e);
+        }
+      }
+
+      // Local guest toggle: check robustly and use cart context API
+      const localExists = cartItems.find((it) => {
+        if (!it) return false;
+        const ids = [it.product_id, it.id, it.sku];
+        if (it.product) ids.push(it.product.id, it.product.slug);
+        return ids.some((x) => x === productId || String(x) === canonicalId);
+      });
+
+      if (localExists) {
+        removeLocalCartItem(localExists.id);
+        // wait for cartItems to reflect removal
+        await waitFor(() => !cartItemsRef.current.some((it) => {
+          if (!it) return false;
+          const ids = [it.product_id, it.id, it.sku];
+          if (it.product) ids.push(it.product.id, it.product.slug);
+          return ids.some((x) => x === productId || String(x) === canonicalId);
+        }), 1000);
+        pendingRef.current.delete(pendingKey);
+        setTick((t) => t + 1);
+        return;
+      }
+
+      addLocalCartItem({
+        id: canonicalId,
+        product_id: canonicalId,
+        variant_id: null,
+        quantity: 1,
         name: item.name,
         brand: item.brand,
         price: item.price,
-        originalPrice: item.originalPrice,
+        originalPrice: item.originalPrice || null,
         image: item.image,
-      };
+        rating: item.rating || null,
+        reviews: item.reviews || null,
+        inStock: item.inStock !== undefined ? item.inStock : true,
+        colors: item.colors || [],
+      });
 
-      try {
-        await addItemTrigger({ product_id: product.id, quantity: 1 }).unwrap();
-      } catch (e) {
-        dispatch(
-          addLocalItem({
-            id: `local-${Date.now()}`,
-            product_id: product.id,
-            variant_id: null,
-            quantity: 1,
-            name: product.name,
-            price: product.price,
-            image: product.image,
-          })
-        );
-      }
+      // wait for cartItems to reflect addition
+      await waitFor(() => cartItemsRef.current.some((it) => {
+        if (!it) return false;
+        const ids = [it.product_id, it.id, it.sku];
+        if (it.product) ids.push(it.product.id, it.product.slug);
+        return ids.some((x) => x === productId || String(x) === canonicalId);
+      }), 1000);
+
+      pendingRef.current.delete(pendingKey);
+      setTick((t) => t + 1);
     },
-    [addItemTrigger, dispatch]
+    [addItemTrigger, addLocalCartItem, cartItems, isAuthenticated, serverItems, removeLocalCartItem]
   );
 
   const handleViewComparison = useCallback(() => {
@@ -274,17 +410,41 @@ export const CompareDropdown = ({ isOpen, onClose }) => {
           {/* Compare Items */}
           <div className="max-h-80 overflow-y-auto scrollbar-hide">
             {compareItems.length > 0 ? (
-              compareItems.map((item) => (
-                <CompareItem
-                  key={item.id}
-                  item={item}
-                  onRemoveFromCompare={handleRemoveFromCompare}
-                  onAddToWishlist={handleAddToWishlist}
-                  onAddToCart={handleAddToCart}
-                  isInWishlist={isInWishlist}
-                  isInCart={isInCart}
-                />
-              ))
+              compareItems.map((item) => {
+                const canonicalId = String(item.product?.id ?? item.product_id ?? item.sku ?? item.product?.slug ?? item.id ?? ("p-" + (item.product_id ?? item.id ?? Date.now())));
+                const pendingKey = canonicalId;
+                const isPending = pendingRef.current.has(pendingKey);
+                // productKey is the preferred product-level identifier (stringified)
+                const productKey = String(item.product?.id ?? item.product_id ?? item.sku ?? item.product?.slug ?? item.id ?? "");
+
+                const boolInWishlist = wishlistItems.some((it) => {
+                  if (!it) return false;
+                  const ids = [it.product_id, it.id, it.sku];
+                  if (it.product) ids.push(it.product.id, it.product.slug);
+                  // robust string comparison against productKey or canonicalId
+                  return ids.some((x) => String(x) === productKey || String(x) === canonicalId);
+                });
+
+                const boolInCart = sourceItems.some((it) => {
+                  if (!it) return false;
+                  const ids = [it.product_id, it.id, it.sku];
+                  if (it.product) ids.push(it.product.id, it.product.slug);
+                  return ids.some((x) => String(x) === productKey || String(x) === canonicalId);
+                });
+
+                return (
+                  <CompareItem
+                    key={item.id}
+                    item={item}
+                    onRemoveFromCompare={handleRemoveFromCompare}
+                    onAddToWishlist={handleAddToWishlist}
+                    onAddToCart={handleAddToCart}
+                    isInWishlist={boolInWishlist}
+                    isInCart={boolInCart}
+                    isPending={isPending}
+                  />
+                );
+              })
             ) : (
               <div className="p-12 text-center">
                 <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">

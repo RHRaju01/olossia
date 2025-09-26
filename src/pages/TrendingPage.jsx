@@ -11,6 +11,7 @@ import {
   Grid,
   List,
   BarChart3,
+  Check,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { useAuthRedux } from "../hooks/useAuthRedux";
@@ -19,12 +20,12 @@ import { useWishlist } from "../contexts/WishlistContext";
 import { useCompare } from "../contexts/CompareContext";
 import { useNavigateWithScroll } from "../utils/navigation";
 import { ProductDetailsOverlay } from "../components/commerce/ProductDetailsOverlay";
-import { useDispatch } from "react-redux";
-import { addLocalItem } from "../store/cartSlice";
-import { useAddItemMutation } from "../services/api";
+import { useDispatch /* removed */ } from "react-redux";
+import { useCart } from "../contexts/Cart/CartContext";
+import { useAddItemMutation, useRemoveItemMutation } from "../services/api";
 
 export const TrendingPage = () => {
-  const localItems = useSelector((s) => s.cart?.localItems || []);
+  const { items: localItems, addItem: addLocalCartItem, removeItem: removeLocalCartItem } = useCart();
   const { isAuthenticated } = useAuthRedux();
   const { data: cartResponse } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
@@ -33,10 +34,21 @@ export const TrendingPage = () => {
   const sourceItems = isAuthenticated ? serverItems : localItems;
 
   const isInCart = (productId) =>
-    sourceItems.some((item) => item.product_id === productId);
-  const dispatch = useDispatch();
+    sourceItems.some((item) => {
+      if (!item) return false;
+      const candidateIds = new Set();
+      if (item.product_id) candidateIds.add(item.product_id);
+      if (item.id) candidateIds.add(item.id);
+      if (item.sku) candidateIds.add(item.sku);
+      if (item.product) {
+        if (item.product.id) candidateIds.add(item.product.id);
+        if (item.product.slug) candidateIds.add(item.product.slug);
+      }
+      return candidateIds.has(productId) || candidateIds.has(String(productId));
+    });
   const [addItemTrigger] = useAddItemMutation();
-  const { addItem: addToWishlist, isInWishlist } = useWishlist();
+  const [removeItemTrigger] = useRemoveItemMutation();
+  const { addItem: addToWishlist, isInWishlist, removeItem: removeFromWishlist, items: wishlistItems } = useWishlist();
   const { addItem: addToCompare, isInCompare } = useCompare();
   const navigate = useNavigateWithScroll();
 
@@ -164,6 +176,18 @@ export const TrendingPage = () => {
   ];
 
   const handleAddToWishlist = async (product) => {
+    const existing = wishlistItems.find((it) => {
+      if (!it) return false;
+      const ids = [it.product_id, it.id, it.sku];
+      if (it.product) ids.push(it.product.id, it.product.slug);
+      return ids.some((x) => x === product.id || String(x) === String(product.id));
+    });
+
+    if (existing) {
+      await removeFromWishlist(existing.id);
+      return;
+    }
+
     await addToWishlist(product);
   };
 
@@ -171,12 +195,37 @@ export const TrendingPage = () => {
     await addToCompare(product);
   };
 
+  // Helper to find cart item id (server or local) for a given product id
+  const findCartItemId = (productId) => {
+    const it = sourceItems.find((i) => {
+      if (!i) return false;
+      if (i.product_id && i.product_id === productId) return true;
+      if (i.sku && i.sku === productId) return true;
+      if (i.id && i.id === productId) return true;
+      if (i.product && (i.product.id === productId || i.product.slug === productId)) return true;
+      return false;
+    });
+    return it ? it.id : null;
+  };
+
   const handleAddToCart = async (product) => {
-    try {
-      await addItemTrigger({ product_id: product.id, quantity: 1 }).unwrap();
-    } catch (e) {
-      dispatch(
-        addLocalItem({
+    // If authenticated, toggle on the server (remove if exists, else add)
+    if (isAuthenticated) {
+      const existingId = findCartItemId(product.id);
+      if (existingId && removeItemTrigger) {
+        try {
+          await removeItemTrigger(existingId).unwrap();
+        } catch (e) {
+          console.warn("remove failed, not removed from UI", e);
+        }
+        return;
+      }
+
+      try {
+        await addItemTrigger({ product_id: product.id, quantity: 1 }).unwrap();
+      } catch (e) {
+        console.warn("add failed, falling back to local", e);
+        addLocalCartItem({
           id: `local-${Date.now()}`,
           product_id: product.id,
           variant_id: null,
@@ -184,9 +233,28 @@ export const TrendingPage = () => {
           name: product.name,
           price: product.price,
           image: product.image,
-        })
-      );
+        });
+      }
+      return;
     }
+
+    // Guest: toggle local cart
+    const localExists = localItems.some((it) => (it.product_id || it.id) === product.id);
+    if (localExists) {
+      const localId = localItems.find((it) => (it.product_id || it.id) === product.id).id;
+      removeLocalCartItem(localId);
+      return;
+    }
+
+    addLocalCartItem({
+      id: `local-${Date.now()}`,
+      product_id: product.id,
+      variant_id: null,
+      quantity: 1,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+    });
   };
 
   const handleViewProduct = (productId) => {
@@ -415,11 +483,15 @@ export const TrendingPage = () => {
                           }}
                           className={`w-10 h-10 rounded-full shadow-lg border-0 transition-all duration-300 ${
                             isInCart(product.id)
-                              ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white lg:hover:from-green-600 lg:hover:to-emerald-600"
-                              : "bg-white/90 lg:hover:bg-white text-gray-700 lg:hover:text-green-600"
+                              ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white lg:hover:from-purple-600 lg:hover:to-pink-600"
+                              : "bg-white/90 lg:hover:bg-white text-gray-700 lg:hover:text-purple-600"
                           }`}
                         >
-                          <ShoppingBag className="w-4 h-4" />
+                          {isInCart(product.id) ? (
+                            <Check className="w-4 h-4 text-white" />
+                          ) : (
+                            <ShoppingBag className="w-4 h-4" />
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -627,13 +699,20 @@ export const TrendingPage = () => {
                             className={`font-semibold px-6 py-2 rounded-xl ${
                               isInCart(product.id)
                                 ? "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                                : "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                                : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
                             }`}
                           >
-                            <ShoppingBag className="w-4 h-4 mr-2" />
-                            {isInCart(product.id)
-                              ? "Added to Cart"
-                              : "Add to Cart"}
+                            {isInCart(product.id) ? (
+                              <>
+                                <Check className="w-4 h-4 mr-2 text-white" />
+                                Added to Cart
+                              </>
+                            ) : (
+                              <>
+                                <ShoppingBag className="w-4 h-4 mr-2" />
+                                Add to Cart
+                              </>
+                            )}
                           </Button>
                         </div>
                       </div>

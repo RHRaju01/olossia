@@ -13,14 +13,9 @@ import {
   Star,
 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
-import { updateLocalItem, removeLocalItem } from "../../store/cartSlice";
+import { useCart } from "../../contexts/Cart/CartContext";
 // wishlist/compare not used in cart dropdown
 import { useNavigate } from "react-router-dom";
-import {
-  useGetCartQuery,
-  useUpdateItemMutation,
-  useRemoveItemMutation,
-} from "../../services/api";
 import { useAuthRedux } from "../../hooks/useAuthRedux";
 import { formatPrice, formatRating } from "../../utils/formatNumbers";
 
@@ -73,9 +68,13 @@ const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
             <h4 className="font-semibold text-gray-900 leading-tight">
               {item.name}
             </h4>
-            <p className="text-sm text-gray-500">
-              Size: {item.size} • Color: {item.color}
-            </p>
+            {(item.size || item.color) && (
+              <p className="text-sm text-gray-500">
+                {[item.size ? `Size: ${item.size}` : null, item.color ? `Color: ${item.color}` : null]
+                  .filter(Boolean)
+                  .join(" • ")}
+              </p>
+            )}
           </div>
 
           {/* Rating */}
@@ -136,8 +135,14 @@ const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-                  className="w-8 h-8 rounded-full border-gray-200"
+                  onClick={() => {
+                    if ((item.quantity || 0) <= 1) return; // prevent decrement to 0/remove
+                    onUpdateQuantity(item.id, item.quantity - 1);
+                  }}
+                  disabled={(item.quantity || 0) <= 1}
+                  className={`w-8 h-8 rounded-full border-gray-200 ${
+                    (item.quantity || 0) <= 1 ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 >
                   <Minus className="w-3 h-3" />
                 </Button>
@@ -175,57 +180,32 @@ const CartItem = React.memo(({ item, onUpdateQuantity, onRemoveItem }) => {
 CartItem.displayName = "CartItem";
 
 export const CartDropdown = ({ isOpen, onClose }) => {
-  const { isAuthenticated } = useAuthRedux();
-  // Prefer reading cart directly from RTK Query for this UI component (skip for guests)
-  const { data: cartResponse } = useGetCartQuery(undefined, {
-    skip: !isAuthenticated,
-  });
-  const [updateItemTrigger] = useUpdateItemMutation();
-  const [removeItemTrigger] = useRemoveItemMutation();
-
-  // Fallback to Redux local cart for guest users
-  const dispatch = useDispatch();
-  const ctxItems = useSelector((s) => s.cart?.localItems || []);
+  // Use CartContext for mock/local cart data (parallel to Wishlist)
+  const { items: cartItems, updateItem, removeItem } = useCart();
+  // dispatch not required; using CartContext
   const navigate = useNavigate();
-
-  const cartItems = cartResponse?.data?.items || ctxItems || [];
 
   // not using wishlist/compare handlers in cart dropdown
 
   const handleUpdateQuantity = useCallback(
     async (itemId, newQuantity) => {
       if (newQuantity <= 0) {
-        try {
-          await removeItemTrigger(itemId).unwrap();
-        } catch (e) {
-          dispatch(removeLocalItem(itemId));
-        }
+        // remove via CartContext
+        removeItem(itemId);
       } else {
-        try {
-          await updateItemTrigger({
-            itemId,
-            update: { quantity: newQuantity },
-          }).unwrap();
-        } catch (e) {
-          // fallback to local redux cart
-          dispatch(
-            updateLocalItem({ id: itemId, changes: { quantity: newQuantity } })
-          );
-        }
+        // update via CartContext
+        updateItem(itemId, { quantity: newQuantity });
       }
     },
-    [updateItemTrigger, removeItemTrigger]
+    [updateItem, removeItem]
   );
 
   const handleRemoveItem = useCallback(
     async (itemId) => {
-      try {
-        await removeItemTrigger(itemId).unwrap();
-      } catch (e) {
-        dispatch(removeLocalItem(itemId));
-      }
+  // remove via CartContext
+  removeItem(itemId);
     },
-    [removeItemTrigger]
+    [removeItem]
   );
 
   // no wishlist/compare handlers required
@@ -235,7 +215,8 @@ export const CartDropdown = ({ isOpen, onClose }) => {
   return (
     <div className="absolute top-full right-0 mt-2 w-96 z-[55]">
       <Card className="border-0 shadow-2xl rounded-2xl overflow-hidden bg-white">
-        <CardContent className="p-0">
+        {/* limit height to viewport and allow internal vertical scrolling when needed */}
+        <CardContent className="p-0 max-h-[80vh] overflow-y-auto">
           {/* Header */}
           <div className="flex items-center justify-between p-6 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-gray-100">
             <div className="flex items-center gap-3">
@@ -256,7 +237,7 @@ export const CartDropdown = ({ isOpen, onClose }) => {
           </div>
 
           {/* Cart Items */}
-          <div className="max-h-80 overflow-y-auto scrollbar-hide">
+          <div className="overflow-visible">
             {cartItems.length > 0 ? (
               cartItems.map((item) => (
                 <CartItem

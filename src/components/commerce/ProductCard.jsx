@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
-import { Heart, ShoppingBag, Star, Eye, BarChart3, Check } from "lucide-react";
+import { Heart, ShoppingBag, Star, Eye, BarChart3 } from "lucide-react";
 import { useNavigateWithScroll } from "../../utils/navigation";
 import { formatPrice, formatRating } from "../../utils/formatNumbers";
 
@@ -114,17 +114,15 @@ export const ProductCard = React.memo(
                 onClick={(e) =>
                   handleActionClick(e, () => onAddToCart(product))
                 }
-                className={`w-10 h-10 rounded-full shadow-lg border-0 transition-all duration-300 stroke-white ${
+                className={`w-10 h-10 rounded-full shadow-lg border-0 transition-all duration-300 ${
                   isInCart(product.id)
                     ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white lg:hover:from-purple-600 lg:hover:to-pink-600"
                     : "bg-white/90 lg:hover:bg-white text-gray-700 lg:hover:text-purple-600"
                 }`}
               >
-                <ShoppingBag
-                  className={`w-4 h-4 ${
-                    isInCart(product.id) ? "stroke-white" : ""
-                  }`}
-                />
+                  <ShoppingBag
+                    className={`w-4 h-4 ${isInCart(product.id) ? "text-white" : ""}`}
+                  />
               </Button>
             </div>
           </div>

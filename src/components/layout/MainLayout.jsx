@@ -57,11 +57,13 @@ export const MainLayout = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 relative">
-      <MemoizedHeader onAuthModalOpen={handleAuthOverlayOpen} />
+  {/* Show header on all routes except /shows */}
+  {location.pathname !== '/shows' && <MemoizedHeader onAuthModalOpen={handleAuthOverlayOpen} />}
       <main>
         <Outlet />
       </main>
-      <MemoizedFooter />
+      {/* Hide footer on the /shows route to keep reels immersive */}
+      {location.pathname !== '/shows' && <MemoizedFooter />}
       <AuthOverlay
         isOpen={isAuthOverlayOpen}
         onClose={handleAuthOverlayClose}

@@ -21,25 +21,21 @@ import {
   Minus,
   X,
 } from "lucide-react";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector /* dispatch removed */ } from "react-redux";
 import { useAuthRedux } from "../hooks/useAuthRedux";
 import { useGetCartQuery, useClearCartMutation } from "../services/api";
-import {
-  updateLocalItem,
-  removeLocalItem,
-  clearLocalItems,
-} from "../store/cartSlice";
+import { useCart } from "../contexts/Cart/CartContext";
 import { useUpdateItemMutation, useRemoveItemMutation } from "../services/api";
 import { useNavigateWithScroll } from "../utils/navigation";
 
 export const CheckoutPage = () => {
-  const localItems = useSelector((s) => s.cart?.localItems || []);
   const { isAuthenticated } = useAuthRedux();
   const { data: cartResponse } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
   });
   const serverItems = cartResponse?.data?.items || [];
-  const cartItems = isAuthenticated ? serverItems : localItems;
+  const { items: contextItems, updateItem: contextUpdateItem, removeItem: contextRemoveItem, addItem: contextAddItem } = useCart();
+  const cartItems = isAuthenticated ? serverItems : contextItems;
 
   const totals = React.useMemo(() => {
     const subtotal = cartItems.reduce((s, it) => s + it.price * it.quantity, 0);
@@ -48,7 +44,7 @@ export const CheckoutPage = () => {
     return { subtotal, itemCount, shipping, total: subtotal + shipping };
   }, [cartItems]);
 
-  const dispatch = useDispatch();
+  // dispatch removed; using CartContext for local/demo cart operations
   const [clearCartTrigger] = useClearCartMutation();
 
   const clearCart = async () => {
@@ -61,7 +57,8 @@ export const CheckoutPage = () => {
         return { success: false, error: e };
       }
     }
-    dispatch(clearLocalItems());
+    // clear local items via context
+    contextItems.forEach((it) => contextRemoveItem(it.id));
     return { success: true };
   };
   const [updateItemTrigger] = useUpdateItemMutation();
@@ -116,7 +113,7 @@ export const CheckoutPage = () => {
       try {
         await removeItemTrigger(itemId).unwrap();
       } catch (e) {
-        dispatch(removeLocalItem(itemId));
+        contextRemoveItem(itemId);
       }
     } else {
       try {
@@ -125,9 +122,7 @@ export const CheckoutPage = () => {
           update: { quantity: newQuantity },
         }).unwrap();
       } catch (e) {
-        dispatch(
-          updateLocalItem({ id: itemId, changes: { quantity: newQuantity } })
-        );
+        contextUpdateItem(itemId, { quantity: newQuantity });
       }
     }
   };
@@ -136,7 +131,7 @@ export const CheckoutPage = () => {
     try {
       await removeItemTrigger(itemId).unwrap();
     } catch (e) {
-      dispatch(removeLocalItem(itemId));
+      contextRemoveItem(itemId);
     }
   };
 
@@ -514,8 +509,13 @@ export const CheckoutPage = () => {
                       {shippingInfo.firstName} {shippingInfo.lastName}
                       <br />
                       {shippingInfo.address}
+                      {shippingInfo.apartment && (
+                        <>
+                          <br />
+                          {shippingInfo.apartment}
+                        </>
+                      )}
                       <br />
-                      {shippingInfo.apartment && `${shippingInfo.apartment}\n`}
                       {shippingInfo.city}, {shippingInfo.state}{" "}
                       {shippingInfo.zipCode}
                     </p>
@@ -528,7 +528,9 @@ export const CheckoutPage = () => {
                       Payment Method
                     </h4>
                     <p className="text-gray-700">
-                      **** **** **** {paymentInfo.cardNumber.slice(-4)}
+                      **** **** **** {paymentInfo.cardNumber
+                        ? paymentInfo.cardNumber.slice(-4)
+                        : "----"}
                       <br />
                       {paymentInfo.nameOnCard}
                     </p>

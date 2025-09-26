@@ -103,7 +103,8 @@ export const UserDropdown = ({ isOpen, onClose }) => {
   return (
     <div className="absolute right-0 top-full z-[55] mt-2 w-96">
       <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-2xl">
-        <CardContent className="p-0">
+        {/* limit height to viewport and allow internal vertical scrolling when needed */}
+        <CardContent className="p-0 max-h-[80vh] overflow-y-auto">
           {/* User Info Header */}
           <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-8 text-white relative">
             <div className="absolute right-4 top-4">

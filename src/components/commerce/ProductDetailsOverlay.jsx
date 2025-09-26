@@ -11,8 +11,10 @@ import {
   Check,
   ArrowRight,
 } from "lucide-react";
-import { useDispatch } from "react-redux";
-import { addLocalItem } from "../../store/cartSlice";
+import { /* useDispatch removed */ } from "react-redux";
+import { useCart } from "../../contexts/Cart/CartContext";
+import { useAuthRedux } from "../../hooks/useAuthRedux";
+import { useGetCartQuery, useRemoveItemMutation } from "../../services/api";
 import { useWishlist } from "../../contexts/WishlistContext";
 import { useAddItemMutation } from "../../services/api";
 import { formatPrice, formatRating } from "../../utils/formatNumbers";
@@ -24,8 +26,13 @@ export const ProductDetailsOverlay = ({
   onViewFullDetails,
 }) => {
   const [addItemTrigger] = useAddItemMutation();
-  const dispatch = useDispatch();
-  const { addItem: addToWishlist, isInWishlist } = useWishlist();
+  const [removeItemTrigger] = useRemoveItemMutation();
+  const { addItem: addLocalCartItem, toggleItem: toggleLocalCartItem, items: localItems } = useCart();
+  const { isAuthenticated } = useAuthRedux();
+  const { data: cartResponse } = useGetCartQuery(undefined, { skip: !isAuthenticated });
+  const serverItems = cartResponse?.data?.items || [];
+  const sourceItems = isAuthenticated ? serverItems : localItems;
+  const { addItem: addToWishlist, isInWishlist, removeItem: removeFromWishlist, items: wishlistItems } = useWishlist();
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState("M");
@@ -53,47 +60,107 @@ export const ProductDetailsOverlay = ({
       }
     : null;
 
+  const isInCart = (productId) =>
+    sourceItems.some((item) => {
+      if (!item) return false;
+      const candidateIds = new Set();
+      if (item.product_id) candidateIds.add(item.product_id);
+      if (item.id) candidateIds.add(item.id);
+      if (item.sku) candidateIds.add(item.sku);
+      if (item.product) {
+        if (item.product.id) candidateIds.add(item.product.id);
+        if (item.product.slug) candidateIds.add(item.product.slug);
+      }
+      return candidateIds.has(productId) || candidateIds.has(String(productId));
+    });
+
+  const findCartItemId = (productId) => {
+    const it = sourceItems.find((i) => {
+      if (!i) return false;
+      if (i.product_id && i.product_id === productId) return true;
+      if (i.sku && i.sku === productId) return true;
+      if (i.id && i.id === productId) return true;
+      if (i.product && (i.product.id === productId || i.product.slug === productId)) return true;
+      return false;
+    });
+    return it ? it.id : null;
+  };
+
   const handleAddToCart = useCallback(async () => {
     if (!overlayProduct) return;
-    const cartItem = {
-      ...overlayProduct,
-      quantity,
-      size: selectedSize,
-      color: overlayProduct.colors[selectedColor].name,
-      image: overlayProduct.images[0],
-    };
 
-    try {
-      await addItemTrigger({
-        product_id: overlayProduct.id,
-        quantity,
-      }).unwrap();
-    } catch (e) {
-      // fallback to local redux guest cart
-      dispatch(
-        addLocalItem({
-          id: `local-${Date.now()}`,
-          product_id: overlayProduct.id,
-          variant_id: null,
-          quantity,
-          name: overlayProduct.name,
-          price: overlayProduct.price,
-          image: overlayProduct.images[0],
-          size: selectedSize,
-          color: overlayProduct.colors[selectedColor]?.name,
-        })
-      );
+    if (isAuthenticated) {
+      const existingId = findCartItemId(overlayProduct.id);
+      if (existingId) {
+        try {
+          await removeItemTrigger(existingId).unwrap();
+          return;
+        } catch (e) {
+          console.warn('server remove failed, not removed from UI', e);
+        }
+      }
+
+      try {
+        await addItemTrigger({ product_id: overlayProduct.id, quantity }).unwrap();
+        return;
+      } catch (e) {
+        console.warn('server add failed, falling back to local', e);
+      }
     }
-  }, [addItemTrigger, overlayProduct, quantity, selectedSize, selectedColor]);
+
+    // Guest/local toggle
+    const localExists = localItems.find((it) => {
+      if (!it) return false;
+      const ids = [it.product_id, it.id, it.sku];
+      if (it.product) ids.push(it.product.id, it.product.slug);
+      return ids.some((x) => x === overlayProduct.id || String(x) === String(overlayProduct.id));
+    });
+
+    if (localExists) {
+      // remove
+      toggleLocalCartItem({ id: localExists.id, product_id: overlayProduct.id });
+      return;
+    }
+
+    addLocalCartItem({
+      id: `local-${Date.now()}`,
+      product_id: overlayProduct.id,
+      variant_id: null,
+      quantity,
+      name: overlayProduct.name,
+      brand: overlayProduct.brand,
+      price: overlayProduct.price,
+      originalPrice: overlayProduct.originalPrice || null,
+      image: overlayProduct.images[0],
+      size: selectedSize,
+      color: overlayProduct.colors[selectedColor]?.name,
+      rating: overlayProduct.rating || null,
+      reviews: overlayProduct.reviews || null,
+      inStock: overlayProduct.inStock !== undefined ? overlayProduct.inStock : true,
+      colors: overlayProduct.colors?.map((c) => c.value || c) || [],
+    });
+  }, [addItemTrigger, removeItemTrigger, overlayProduct, quantity, selectedSize, selectedColor, isAuthenticated, localItems, addLocalCartItem, toggleLocalCartItem]);
 
   const handleAddToWishlist = useCallback(async () => {
     if (!overlayProduct) return;
     try {
+      const existing = wishlistItems.find((it) => {
+        if (!it) return false;
+        const ids = [it.product_id, it.id, it.sku];
+        if (it.product) ids.push(it.product.id, it.product.slug);
+        return ids.some((x) => x === overlayProduct.id || String(x) === String(overlayProduct.id));
+      });
+
+      if (existing) {
+        await removeFromWishlist(existing.id);
+        return;
+      }
+
       await addToWishlist({ product_id: overlayProduct.id });
     } catch (e) {
       // noop - wishlist failures are non-blocking for the overlay
     }
-  }, [addToWishlist, overlayProduct]);
+  }, [addToWishlist, overlayProduct, removeFromWishlist, wishlistItems]);
   if (!isOpen || !product) return null;
 
   return (

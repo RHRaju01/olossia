@@ -8,6 +8,19 @@ import React, {
 } from "react";
 import { useAuthRedux } from "../../hooks/useAuthRedux";
 
+const matchesProductId = (item, productId) => {
+  if (!item) return false;
+  const candidateIds = new Set();
+  if (item.product_id) candidateIds.add(item.product_id);
+  if (item.id) candidateIds.add(item.id);
+  if (item.sku) candidateIds.add(item.sku);
+  if (item.product) {
+    if (item.product.id) candidateIds.add(item.product.id);
+    if (item.product.slug) candidateIds.add(item.product.slug);
+  }
+  return candidateIds.has(productId) || candidateIds.has(String(productId));
+};
+
 const CompareContext = createContext();
 
 const compareReducer = (state, action) => {
@@ -32,8 +45,8 @@ const compareReducer = (state, action) => {
         };
       }
 
-      const existingItem = state.items.find(
-        (item) => item.product_id === action.payload.product_id
+      const existingItem = state.items.find((item) =>
+        matchesProductId(item, action.payload.product_id)
       );
       if (existingItem) {
         return {
@@ -98,8 +111,8 @@ export const CompareProvider = ({ children }) => {
     async (product) => {
       try {
         // Check if item already exists and remove it (toggle functionality)
-        const existingItem = state.items.find(
-          (item) => item.product_id === product.id
+        const existingItem = state.items.find((item) =>
+          matchesProductId(item, product.id)
         );
         if (existingItem) {
           dispatch({ type: "REMOVE_ITEM", payload: existingItem.id });
@@ -166,7 +179,7 @@ export const CompareProvider = ({ children }) => {
 
   const isInCompare = useCallback(
     (productId) => {
-      return state.items.some((item) => item.product_id === productId);
+      return state.items.some((item) => matchesProductId(item, productId));
     },
     [state.items]
   );

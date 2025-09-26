@@ -20,11 +20,11 @@ import {
   ArrowRight,
   Star,
 } from "lucide-react";
-import { useSelector, useDispatch } from "react-redux";
-import { updateLocalItem, removeLocalItem } from "../store/cartSlice";
+import { useCart } from "../contexts/Cart/CartContext";
 import { useWishlist } from "../contexts/WishlistContext";
 import { useAuthRedux } from "../hooks/useAuthRedux";
 import { useNavigateWithScroll } from "../utils/navigation";
+import { formatPrice } from "../utils/formatNumbers";
 import {
   useGetCartQuery,
   useUpdateItemMutation,
@@ -42,10 +42,9 @@ export const CartPage = () => {
   const [removeItemTrigger] = useRemoveItemMutation();
   const [clearCartTrigger] = useClearCartMutation();
 
-  const dispatch = useDispatch();
-  const ctxItems = useSelector((s) => s.cart?.localItems || []);
+  const { items: contextItems, updateItem: contextUpdateItem, removeItem: contextRemoveItem } = useCart();
 
-  const cartItems = cartResponse?.data?.items || ctxItems || [];
+  const cartItems = cartResponse?.data?.items || contextItems || [];
 
   const subtotal = cartItems.reduce(
     (sum, it) => sum + it.price * it.quantity,
@@ -54,7 +53,7 @@ export const CartPage = () => {
   const itemCount = cartItems.reduce((sum, it) => sum + it.quantity, 0);
   const shipping = subtotal > 100 ? 0 : subtotal > 0 ? 10 : 0;
   const totals = { subtotal, itemCount, shipping, total: subtotal + shipping };
-  const { addItem: addToWishlist, isInWishlist } = useWishlist();
+  const { addItem: addToWishlist, isInWishlist, removeItem: removeFromWishlist, items: wishlistItems } = useWishlist();
   const navigate = useNavigateWithScroll();
 
   // Scroll to top when component mounts
@@ -63,22 +62,28 @@ export const CartPage = () => {
   }, []);
 
   const handleUpdateQuantity = async (itemId, newQuantity) => {
-    if (newQuantity <= 0) {
+    // Enforce minimum quantity of 1. Do not remove item when decrementing from 1.
+    if (newQuantity < 1) {
+      return;
+    }
+    if (newQuantity === 0) {
+      // legacy guard - should not happen because UI won't allow it
       try {
         await removeItemTrigger(itemId).unwrap();
       } catch (e) {
-        dispatch(removeLocalItem(itemId));
+        contextRemoveItem(itemId);
       }
-    } else {
+      return;
+    }
+
+    if (newQuantity >= 1) {
       try {
         await updateItemTrigger({
           itemId,
           update: { quantity: newQuantity },
         }).unwrap();
       } catch (e) {
-        dispatch(
-          updateLocalItem({ id: itemId, changes: { quantity: newQuantity } })
-        );
+        contextUpdateItem(itemId, { quantity: newQuantity });
       }
     }
   };
@@ -87,8 +92,8 @@ export const CartPage = () => {
     try {
       await removeItemTrigger(itemId).unwrap();
     } catch (e) {
-      // fallback to redux guest cart
-      dispatch(removeLocalItem(itemId));
+      // fallback to local cart context
+      contextRemoveItem(itemId);
     }
   };
 
@@ -105,12 +110,22 @@ export const CartPage = () => {
       colors: ["#000000", "#FFFFFF", "#FF6B9D"], // Default colors
     };
 
-    await addToWishlist(product);
-    try {
-      await removeItemTrigger(item.id).unwrap();
-    } catch (e) {
-      dispatch(removeLocalItem(item.id));
+    // Toggle wishlist: remove if already present, else add
+    const existing = wishlistItems.find((it) => {
+      if (!it) return false;
+      const ids = [it.product_id, it.id, it.sku];
+      if (it.product) ids.push(it.product.id, it.product.slug);
+      return ids.some((x) => x === product.id || String(x) === String(product.id));
+    });
+
+    if (existing) {
+      await removeFromWishlist(existing.id);
+    } else {
+      await addToWishlist(product);
     }
+    // IMPORTANT: Do not remove the item from the cart when toggling wishlist.
+    // The UI should show "Saved for Later" while keeping the cart entry intact.
+    // We intentionally leave removal to an explicit "Remove" action.
   };
 
   const handleClearCart = async () => {
@@ -118,8 +133,8 @@ export const CartPage = () => {
       try {
         await clearCartTrigger().unwrap();
       } catch (e) {
-        // clear local guest cart
-        dispatch({ type: "cart/clearLocalItems" });
+        // clear local guest cart via context
+        contextItems.forEach((it) => contextRemoveItem(it.id));
       }
     }
   };
@@ -257,9 +272,16 @@ export const CartPage = () => {
                               <h3 className="font-bold text-gray-900 text-xl leading-tight">
                                 {item.name}
                               </h3>
-                              <p className="text-gray-600 mt-1">
-                                Size: {item.size} • Color: {item.color}
-                              </p>
+                              { (item.size || item.color) && (
+                                <p className="text-gray-600 mt-1">
+                                  {[
+                                    item.size ? `Size: ${item.size}` : null,
+                                    item.color ? `Color: ${item.color}` : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" • ")}
+                                </p>
+                              ) }
                             </div>
                             <Button
                               variant="ghost"
@@ -294,13 +316,19 @@ export const CartPage = () => {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() =>
+                                  onClick={() => {
+                                    if ((item.quantity || 0) <= 1) return;
                                     handleUpdateQuantity(
                                       item.id,
                                       item.quantity - 1
-                                    )
-                                  }
-                                  className="w-8 h-8 rounded-full hover:bg-white"
+                                    );
+                                  }}
+                                  disabled={(item.quantity || 0) <= 1}
+                                  className={`w-8 h-8 rounded-full hover:bg-white ${
+                                    (item.quantity || 0) <= 1
+                                      ? "opacity-50 cursor-not-allowed"
+                                      : ""
+                                  }`}
                                 >
                                   <Minus className="w-4 h-4" />
                                 </Button>

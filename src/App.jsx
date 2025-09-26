@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "react-query";
 import { Button } from "./components/ui/button";
 import { WishlistProvider } from "./contexts/WishlistContext";
 import { CompareProvider } from "./contexts/CompareContext";
+import { CartProvider } from "./contexts/Cart/CartContext";
 import { MainLayout } from "./components/layout/MainLayout";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { useAuthRedux } from "./hooks/useAuthRedux";
@@ -33,6 +34,8 @@ const TrendingPage = React.lazy(() =>
     default: module.TrendingPage,
   }))
 );
+const ShowsPage = React.lazy(() => import("./pages/Shows").then((m) => ({ default: m.Shows })));
+const OffersPage = React.lazy(() => import("./pages/Offers").then((m) => ({ default: m.Offers })));
 const BrandsPage = React.lazy(() =>
   import("./pages/BrandsPage").then((module) => ({
     default: module.BrandsPage,
@@ -121,6 +124,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <WishlistProvider>
         <CompareProvider>
+          <CartProvider>
           <AuthInitializer />
           <Router>
             <Suspense fallback={<PageLoader />}>
@@ -138,6 +142,8 @@ function App() {
                   <Route path="/categories" element={<CategoriesPage />} />
                   <Route path="/brands" element={<BrandsPage />} />
                   <Route path="/trending" element={<TrendingPage />} />
+                  <Route path="/shows" element={<ShowsPage />} />
+                  <Route path="/offers" element={<OffersPage />} />
                   <Route path="/product/:id" element={<ProductDetailsPage />} />
 
                   {/* Wishlist route */}
@@ -223,6 +229,7 @@ function App() {
               </Routes>
             </Suspense>
           </Router>
+          </CartProvider>
         </CompareProvider>
       </WishlistProvider>
     </QueryClientProvider>

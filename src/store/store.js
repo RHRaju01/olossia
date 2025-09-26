@@ -15,9 +15,23 @@ listenerMiddleware.startListening({
       const user = action.payload;
       if (!user) return; // ignore logout
 
-      // Read current guest local items from state
+      // Read current guest local items from state. If the new CartContext is being used
+      // and Redux slice is empty, fall back to any persisted guest_cart in localStorage
       const state = listenerApi.getState();
-      const localItems = state.cart?.localItems || [];
+      let localItems = state.cart?.localItems || [];
+      try {
+        if ((!localItems || localItems.length === 0) && typeof window !== "undefined") {
+          const persisted = window.localStorage.getItem("guest_cart");
+          if (persisted) {
+            const parsed = JSON.parse(persisted);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              localItems = parsed;
+            }
+          }
+        }
+      } catch (e) {
+        // ignore parsing errors
+      }
       if (!localItems || localItems.length === 0) return;
 
       // Convert to server payload: { items: [{ product_id, variant_id, quantity }] }
@@ -93,7 +107,8 @@ let lastCartJson = null;
 store.subscribe(() => {
   try {
     const state = store.getState();
-    const cartJson = JSON.stringify(state.cart?.localItems || []);
+    const toPersist = state.cart?.localItems || [];
+    const cartJson = JSON.stringify(toPersist);
     if (cartJson !== lastCartJson) {
       lastCartJson = cartJson;
       if (typeof window !== "undefined") {

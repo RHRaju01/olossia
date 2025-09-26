@@ -18,13 +18,13 @@ import { useGetCartQuery } from "../services/api";
 import { useCompare } from "../contexts/CompareContext";
 import { useNavigateWithScroll } from "../utils/navigation";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
-import { addLocalItem } from "../store/cartSlice";
+import { useDispatch /* removed */ } from "react-redux";
+import { useCart } from "../contexts/Cart/CartContext";
 import { useAddItemMutation } from "../services/api";
 
 export const WishlistPage = () => {
   const { items: wishlistItems, removeItem, clearWishlist } = useWishlist();
-  const localItems = useSelector((s) => s.cart?.localItems || []);
+  const { items: localItems } = useCart();
   const { isAuthenticated } = useAuthRedux();
   const { data: cartResponse } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
@@ -33,9 +33,20 @@ export const WishlistPage = () => {
   const sourceItems = isAuthenticated ? serverItems : localItems;
 
   const isInCart = (productId) =>
-    sourceItems.some((item) => item.product_id === productId);
-  const dispatch = useDispatch();
+    sourceItems.some((item) => {
+      if (!item) return false;
+      const candidateIds = new Set();
+      if (item.product_id) candidateIds.add(item.product_id);
+      if (item.id) candidateIds.add(item.id);
+      if (item.sku) candidateIds.add(item.sku);
+      if (item.product) {
+        if (item.product.id) candidateIds.add(item.product.id);
+        if (item.product.slug) candidateIds.add(item.product.slug);
+      }
+      return candidateIds.has(productId) || candidateIds.has(String(productId));
+    });
   const [addItemTrigger] = useAddItemMutation();
+  const { addItem: addLocalCartItem, removeItem: removeLocalCartItem, toggleItem: toggleLocalCartItem } = useCart();
   const { addItem: addToCompare, isInCompare } = useCompare();
   const navigate = useNavigateWithScroll();
   const [viewMode, setViewMode] = React.useState("grid");
@@ -51,34 +62,48 @@ export const WishlistPage = () => {
 
   const handleAddToCart = async (item) => {
     if (!item.inStock) return;
+    const productId = item.product_id;
+    const existingId = findCartItemId(productId);
 
-    const product = {
-      id: item.product_id,
-      name: item.name,
-      brand: item.brand,
-      price: item.price,
-      originalPrice: item.originalPrice,
-      image: item.image,
-    };
+    // If authenticated, toggle on server
+    if (isAuthenticated) {
+      if (existingId && removeItemTrigger) {
+        try {
+          await removeItemTrigger(existingId).unwrap();
+          return;
+        } catch (e) {
+          console.warn('server remove failed, falling back to local remove', e);
+        }
+      }
 
-    try {
-      await addItemTrigger({ product_id: product.id, quantity: 1 }).unwrap();
-      // success — optionally remove from wishlist
-      // await removeItem(item.id);
-    } catch (e) {
-      // fallback to local redux guest cart
-      dispatch(
-        addLocalItem({
-          id: `local-${Date.now()}`,
-          product_id: product.id,
-          variant_id: null,
-          quantity: 1,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-        })
-      );
+      try {
+        await addItemTrigger({ product_id: productId, quantity: 1 }).unwrap();
+        return;
+      } catch (e) {
+        console.warn('server add failed, falling back to local', e);
+        // fallthrough to local add
+      }
     }
+
+    // Guest/local toggle
+    const localExists = localItems.some((it) => (it.product_id || it.id) === productId);
+    if (localExists) {
+      const localId = localItems.find((it) => (it.product_id || it.id) === productId).id;
+      addLocalCartItem({}); // ensure function referenced; actual removal below
+      // remove via context API
+      const removed = removeLocalCartItem(localId);
+      return removed;
+    }
+
+    addLocalCartItem({
+      id: `local-${Date.now()}`,
+      product_id: productId,
+      variant_id: null,
+      quantity: 1,
+      name: item.name,
+      price: item.price,
+      image: item.image,
+    });
   };
 
   const handleAddToCompare = async (item) => {
@@ -257,7 +282,7 @@ export const WishlistPage = () => {
                             ))}
                           </div>
                           <span className="text-sm text-gray-600">
-                            ({item.reviews})
+                            ({item.reviews?.length || item.reviewsCount || 0})
                           </span>
                         </div>
 
@@ -305,10 +330,14 @@ export const WishlistPage = () => {
                           <Button
                             onClick={() => handleAddToCart(item)}
                             disabled={!item.inStock}
-                            className="flex-1 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-semibold py-2 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                            className={`flex-1 font-semibold py-2 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed ${
+                              isInCart(item.product_id)
+                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
+                                : 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white'
+                            }`}
                           >
-                            <ShoppingBag className="w-4 h-4 mr-2" />
-                            {item.inStock ? "Add to Cart" : "Out of Stock"}
+                            <ShoppingBag className={`w-4 h-4 mr-2 ${isInCart(item.product_id) ? 'text-white' : ''}`} />
+                            {item.inStock ? 'Add to Cart' : 'Out of Stock'}
                           </Button>
                         </div>
                       </div>
@@ -360,7 +389,7 @@ export const WishlistPage = () => {
                             ))}
                           </div>
                           <span className="text-sm text-gray-600">
-                            ({item.reviews} reviews)
+                            ({item.reviews?.length || item.reviewsCount || 0} reviews)
                           </span>
                         </div>
 
@@ -415,9 +444,13 @@ export const WishlistPage = () => {
                             <Button
                               onClick={() => handleAddToCart(item)}
                               disabled={!item.inStock}
-                              className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-semibold px-6 py-2 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                                className={`font-semibold px-6 py-2 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed ${
+                                  isInCart(item.product_id)
+                                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
+                                    : 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white'
+                                }`}
                             >
-                              <ShoppingBag className="w-4 h-4 mr-2" />
+                                <ShoppingBag className={`w-4 h-4 mr-2 ${isInCart(item.product_id) ? 'text-white' : ''}`} />
                               {item.inStock ? "Add to Cart" : "Out of Stock"}
                             </Button>
                           </div>

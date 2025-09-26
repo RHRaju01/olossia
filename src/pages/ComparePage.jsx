@@ -22,15 +22,15 @@ import { useCompare } from "../contexts/CompareContext";
 import { useSelector } from "react-redux";
 import { useAuthRedux } from "../hooks/useAuthRedux";
 import { useGetCartQuery } from "../services/api";
-import { useDispatch } from "react-redux";
-import { addLocalItem } from "../store/cartSlice";
+import { useDispatch /* removed */ } from "react-redux";
+import { useCart } from "../contexts/Cart/CartContext";
 import { useAddItemMutation } from "../services/api";
 import { useWishlist } from "../contexts/WishlistContext";
 import { useNavigateWithScroll } from "../utils/navigation";
 
 export const ComparePage = () => {
   const { items: compareItems, removeItem, clearCompare } = useCompare();
-  const localItems = useSelector((s) => s.cart?.localItems || []);
+  const { items: localItems } = useCart();
   const { isAuthenticated } = useAuthRedux();
   const { data: cartResponse } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
@@ -39,10 +39,21 @@ export const ComparePage = () => {
   const sourceItems = isAuthenticated ? serverItems : localItems;
 
   const isInCart = (productId) =>
-    sourceItems.some((item) => item.product_id === productId);
-  const dispatch = useDispatch();
+    sourceItems.some((item) => {
+      if (!item) return false;
+      const candidateIds = new Set();
+      if (item.product_id) candidateIds.add(item.product_id);
+      if (item.id) candidateIds.add(item.id);
+      if (item.sku) candidateIds.add(item.sku);
+      if (item.product) {
+        if (item.product.id) candidateIds.add(item.product.id);
+        if (item.product.slug) candidateIds.add(item.product.slug);
+      }
+      return candidateIds.has(productId) || candidateIds.has(String(productId));
+    });
   const [addItemTrigger] = useAddItemMutation();
-  const { addItem: addToWishlist, isInWishlist } = useWishlist();
+  const { addItem: addLocalCartItem } = useCart();
+  const { addItem: addToWishlist, isInWishlist, removeItem: removeFromWishlist, items: wishlistItems } = useWishlist();
   const navigate = useNavigateWithScroll();
 
   // Scroll to top when component mounts
@@ -65,30 +76,49 @@ export const ComparePage = () => {
   };
 
   const handleAddToCart = async (item) => {
-    const product = {
-      id: item.product_id,
+    const productId = item.product_id;
+    const existingId = findCartItemId ? findCartItemId(productId) : null;
+
+    if (isAuthenticated) {
+      if (existingId && removeItemTrigger) {
+        try {
+          await removeItemTrigger(existingId).unwrap();
+          return;
+        } catch (e) {
+          console.warn('server remove failed, falling back to local remove', e);
+        }
+      }
+
+      try {
+        await addItemTrigger({ product_id: productId, quantity: 1 }).unwrap();
+        return;
+      } catch (e) {
+        console.warn('server add failed, falling back to local', e);
+      }
+    }
+
+    const localExists = localItems.some((it) => (it.product_id || it.id) === productId);
+    if (localExists) {
+      const localId = localItems.find((it) => (it.product_id || it.id) === productId).id;
+      removeLocalCartItem(localId);
+      return;
+    }
+
+    addLocalCartItem({
+      id: `local-${Date.now()}`,
+      product_id: productId,
+      variant_id: null,
+      quantity: 1,
       name: item.name,
       brand: item.brand,
       price: item.price,
-      originalPrice: item.originalPrice,
+      originalPrice: item.originalPrice || null,
       image: item.image,
-    };
-
-    try {
-      await addItemTrigger({ product_id: product.id, quantity: 1 }).unwrap();
-    } catch (e) {
-      dispatch(
-        addLocalItem({
-          id: `local-${Date.now()}`,
-          product_id: product.id,
-          variant_id: null,
-          quantity: 1,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-        })
-      );
-    }
+      rating: item.rating || null,
+      reviews: item.reviews || null,
+      inStock: item.inStock !== undefined ? item.inStock : true,
+      colors: item.colors || [],
+    });
   };
 
   const handleAddToWishlist = async (item) => {
@@ -103,6 +133,19 @@ export const ComparePage = () => {
       reviews: item.reviews,
       colors: item.colors,
     };
+
+    // Toggle wishlist: remove if exists
+    const existing = wishlistItems.find((it) => {
+      if (!it) return false;
+      const ids = [it.product_id, it.id, it.sku];
+      if (it.product) ids.push(it.product.id, it.product.slug);
+      return ids.some((x) => x === product.id || String(x) === String(product.id));
+    });
+
+    if (existing) {
+      await removeFromWishlist(existing.id);
+      return;
+    }
 
     await addToWishlist(product);
   };
@@ -354,9 +397,13 @@ export const ComparePage = () => {
                       </Button>
                       <Button
                         onClick={() => handleAddToCart(item)}
-                        className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-semibold px-4 py-1 rounded-lg text-sm"
+                        className={`font-semibold px-4 py-1 rounded-lg text-sm ${
+                          isInCart(item.product_id)
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
+                            : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white'
+                        }`}
                       >
-                        <ShoppingBag className="w-3 h-3 mr-1" />
+                        <ShoppingBag className={`w-3 h-3 mr-1 ${isInCart(item.product_id) ? 'text-white' : ''}`} />
                         Add
                       </Button>
                     </div>

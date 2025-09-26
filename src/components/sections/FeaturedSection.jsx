@@ -2,8 +2,9 @@ import React, { useState, useCallback, useMemo } from "react";
 import { Button } from "../ui";
 import { ArrowRight } from "lucide-react";
 import { ProductCard } from "../commerce/ProductCard";
-import { useSelector, useDispatch } from "react-redux";
-import { addLocalItem } from "../../store/cartSlice";
+import { useSelector /* dispatch removed */ } from "react-redux";
+import { useCart } from "../../contexts/Cart/CartContext";
+import { useAuthRedux } from "../../hooks/useAuthRedux";
 import { useWishlist } from "../../contexts/WishlistContext";
 import { useCompare } from "../../contexts/CompareContext";
 import { useAddItemMutation } from "../../services/api";
@@ -11,8 +12,7 @@ import { useNavigateWithScroll } from "../../utils/navigation";
 import { ProductDetailsOverlay } from "../commerce/ProductDetailsOverlay";
 
 export const FeaturedSection = React.memo(() => {
-  const dispatch = useDispatch();
-  const cartItems = useSelector((s) => s.cart?.localItems || []);
+  const { items: cartItems, addItem: addLocalCartItem, removeItem: removeLocalCartItem, toggleItem } = useCart();
   const {
     addItem: addToWishlist,
     removeItem: removeFromWishlist,
@@ -115,9 +115,12 @@ export const FeaturedSection = React.memo(() => {
   const handleAddToWishlist = useCallback(
     async (product) => {
       if (isInWishlist(product.id)) {
-        const wishlistItem = wishlistItems.find(
-          (item) => item.product_id === product.id
-        );
+        const wishlistItem = wishlistItems.find((item) => {
+          if (!item) return false;
+          const ids = [item.product_id, item.id, item.sku];
+          if (item.product) ids.push(item.product.id, item.product.slug);
+          return ids.some((x) => x === product.id || String(x) === String(product.id));
+        });
         if (wishlistItem) {
           await removeFromWishlist(wishlistItem.id);
         }
@@ -135,54 +138,41 @@ export const FeaturedSection = React.memo(() => {
     [addToCompare]
   );
 
+  const { isAuthenticated } = useAuthRedux();
+
   const handleAddToCart = useCallback(
     async (product) => {
-      const existingItem = cartItems.find(
-        (item) => item.product_id === product.id
-      );
-      if (existingItem) {
-        return;
+      // For authenticated users prefer server mutation; try to toggle server-side
+      if (isAuthenticated) {
+        try {
+          // there may be a server toggle path elsewhere; keep add behavior
+          await addItemTrigger({ product_id: product.id, quantity: 1 }).unwrap();
+          return;
+        } catch (e) {
+          console.warn("server add failed, falling back to local toggle", e);
+        }
       }
 
-      try {
-        // prefer RTK mutation
-        const res = await addItemTrigger({
-          product_id: product.id,
-          quantity: 1,
-        }).unwrap();
-        if (!res) {
-          dispatch(
-            addLocalItem({
-              id: `local-${Date.now()}`,
-              product_id: product.id,
-              variant_id: null,
-              quantity: 1,
-              name: product.name,
-              price: product.price,
-              image: product.image,
-            })
-          );
-        }
-      } catch (e) {
-        dispatch(
-          addLocalItem({
-            id: `local-${Date.now()}`,
-            product_id: product.id,
-            variant_id: null,
-            quantity: 1,
-            name: product.name,
-            price: product.price,
-            image: product.image,
-          })
-        );
-      }
+      // For guests, use CartContext.toggleItem which mirrors wishlist behaviour
+      toggleItem(product);
     },
-    [cartItems, addItemTrigger, dispatch]
+    [isAuthenticated, addItemTrigger, toggleItem]
   );
 
   const isInCart = useCallback(
     (productId) => {
-      return cartItems.some((item) => item.product_id === productId);
+      return cartItems.some((item) => {
+        if (!item) return false;
+        const candidateIds = new Set();
+        if (item.product_id) candidateIds.add(item.product_id);
+        if (item.id) candidateIds.add(item.id);
+        if (item.sku) candidateIds.add(item.sku);
+        if (item.product) {
+          if (item.product.id) candidateIds.add(item.product.id);
+          if (item.product.slug) candidateIds.add(item.product.slug);
+        }
+        return candidateIds.has(productId) || candidateIds.has(String(productId));
+      });
     },
     [cartItems]
   );

@@ -8,6 +8,20 @@ import React, {
 } from "react";
 import { useAuthRedux } from "../../hooks/useAuthRedux";
 
+// Helper: robustly match an item against a product identifier
+const matchesProductId = (item, productId) => {
+  if (!item) return false;
+  const candidateIds = new Set();
+  if (item.product_id) candidateIds.add(item.product_id);
+  if (item.id) candidateIds.add(item.id);
+  if (item.sku) candidateIds.add(item.sku);
+  if (item.product) {
+    if (item.product.id) candidateIds.add(item.product.id);
+    if (item.product.slug) candidateIds.add(item.product.slug);
+  }
+  return candidateIds.has(productId) || candidateIds.has(String(productId));
+};
+
 const WishlistContext = createContext();
 
 const wishlistReducer = (state, action) => {
@@ -24,8 +38,8 @@ const wishlistReducer = (state, action) => {
         loading: false,
       };
     case "ADD_ITEM":
-      const existingItem = state.items.find(
-        (item) => item.product_id === action.payload.product_id
+      const existingItem = state.items.find((item) =>
+        matchesProductId(item, action.payload.product_id)
       );
       if (existingItem) {
         return state; // Item already in wishlist
@@ -108,8 +122,8 @@ export const WishlistProvider = ({ children }) => {
     async (product) => {
       try {
         // Check if item already exists
-        const existingItem = state.items.find(
-          (item) => item.product_id === product.id
+        const existingItem = state.items.find((item) =>
+          matchesProductId(item, product.id)
         );
         if (existingItem) {
           return { success: false, error: "Item already in wishlist" };
@@ -164,7 +178,7 @@ export const WishlistProvider = ({ children }) => {
 
   const isInWishlist = useCallback(
     (productId) => {
-      return state.items.some((item) => item.product_id === productId);
+      return state.items.some((item) => matchesProductId(item, productId));
     },
     [state.items]
   );

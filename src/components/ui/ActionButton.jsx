@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "./button";
-import { Heart, ShoppingBag, BarChart3, Eye, Check } from "lucide-react";
+import { Heart, ShoppingBag, BarChart3, Eye } from "lucide-react";
 
 export const ActionButton = React.memo(
   ({
@@ -10,21 +10,19 @@ export const ActionButton = React.memo(
     className = "",
     size = "icon",
     showText = false,
+    ...rest
   }) => {
     const getIcon = () => {
       switch (type) {
         case "wishlist":
-          return (
-            <Heart className={`w-4 h-4 ${isActive ? "fill-current" : ""}`} />
-          );
+          // use fill-current so the heart takes the button's text color (white when active)
+          return <Heart className={`w-4 h-4 ${isActive ? "fill-current" : ""}`} />;
         case "cart":
-          return isActive ? (
-            <Check className="w-4 h-4" />
-          ) : (
-            <ShoppingBag className="w-4 h-4" />
-          );
+          // always show ShoppingBag; make it white when active to match ProductCard
+          return <ShoppingBag className={`w-4 h-4 ${isActive ? "text-white" : ""}`} />;
         case "compare":
-          return <BarChart3 className="w-4 h-4" />;
+          // make compare icon white when active
+          return <BarChart3 className={`w-4 h-4 ${isActive ? "text-white" : ""}`} />;
         case "quickview":
           return <Eye className="w-4 h-4" />;
         default:
@@ -73,6 +71,7 @@ export const ActionButton = React.memo(
         size={size}
         onClick={onClick}
         className={`rounded-full shadow-lg border-0 transition-all duration-300 ${getActiveStyles()} ${className}`}
+        {...rest}
       >
         {getIcon()}
         {showText && <span className="ml-2">{getText()}</span>}

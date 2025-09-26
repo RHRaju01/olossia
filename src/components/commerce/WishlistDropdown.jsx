@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
 import { Heart, ShoppingBag, X, Star, BarChart3 } from "lucide-react";
@@ -7,9 +7,8 @@ import { useCompare } from "../../contexts/CompareContext";
 import { useSelector } from "react-redux";
 import { useAuthRedux } from "../../hooks/useAuthRedux";
 import { useGetCartQuery } from "../../services/api";
-import { useAddItemMutation } from "../../services/api";
-import { useDispatch } from "react-redux";
-import { addLocalItem } from "../../store/cartSlice";
+import { useAddItemMutation, useRemoveItemMutation } from "../../services/api";
+import { useCart } from "../../contexts/Cart/CartContext";
 import { useNavigate } from "react-router-dom";
 
 // Memoized wishlist item component
@@ -19,7 +18,9 @@ const WishlistItem = React.memo(
     onRemoveFromWishlist,
     onAddToCart,
     onAddToCompare,
-    isInCompare,
+    isInCompare, // boolean
+    isInCart, // boolean
+    isPending,
   }) => {
     return (
       <div className="p-6 border-b border-gray-50 last:border-b-0">
@@ -69,7 +70,7 @@ const WishlistItem = React.memo(
                   />
                 ))}
               </div>
-              <span className="text-xs text-gray-500">({item.reviews})</span>
+              <span className="text-xs text-gray-500">({item.reviews?.length || item.reviewsCount || 0})</span>
             </div>
 
             {/* Colors */}
@@ -110,7 +111,7 @@ const WishlistItem = React.memo(
                   size="icon"
                   onClick={() => onAddToCompare(item)}
                   className={`w-8 h-8 rounded-full border-gray-200 ${
-                    isInCompare(item.product_id)
+                    isInCompare
                       ? "bg-blue-50 border-blue-300 text-blue-600"
                       : "hover:border-blue-300 hover:bg-blue-50"
                   }`}
@@ -121,10 +122,26 @@ const WishlistItem = React.memo(
                   variant="outline"
                   size="icon"
                   onClick={() => onAddToCart(item)}
-                  className="w-8 h-8 rounded-full border-gray-200 hover:border-purple-300 hover:bg-purple-50"
-                  disabled={!item.inStock}
+                  className={`w-8 h-8 rounded-full border-gray-200 ${
+                    isInCart
+                      ? "bg-purple-50 border-purple-300 text-purple-600"
+                      : "hover:border-purple-300 hover:bg-purple-50"
+                  }`}
+                  disabled={isPending}
                 >
-                  <ShoppingBag className="w-3 h-3 text-purple-600" />
+                  {isPending ? (
+                    <svg
+                      className="w-3 h-3 animate-spin text-purple-600"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeOpacity="0.25" />
+                      <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  ) : (
+                    <ShoppingBag className="w-3 h-3 text-purple-600" />
+                  )}
                 </Button>
               </div>
             </div>
@@ -139,20 +156,63 @@ WishlistItem.displayName = "WishlistItem";
 
 export const WishlistDropdown = ({ isOpen, onClose }) => {
   const { items: wishlistItems, removeItem } = useWishlist();
-  const localItems = useSelector((s) => s.cart?.localItems || []);
   const { isAuthenticated } = useAuthRedux();
   const { data: cartResponse } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
   });
   const serverItems = cartResponse?.data?.items || [];
-  const sourceItems = isAuthenticated ? serverItems : localItems;
+  const { items: cartItems, addItem: addLocalCartItem, toggleItem: toggleLocalItem, removeItem: removeLocalCartItem } = useCart();
+  const sourceItems = isAuthenticated ? serverItems : cartItems;
+  // helper: build candidate id set for a wishlist item
+  const buildCandidatesFromItem = (item) => {
+    const s = new Set();
+    if (!item) return s;
+    if (item.product_id) s.add(String(item.product_id));
+    if (item.id) s.add(String(item.id));
+    if (item.sku) s.add(String(item.sku));
+    if (item.product) {
+      if (item.product.id) s.add(String(item.product.id));
+      if (item.product.slug) s.add(String(item.product.slug));
+    }
+    return s;
+  };
 
-  const isInCart = (productId) =>
-    sourceItems.some((item) => item.product_id === productId);
+  // Reuse buildCandidatesFromItem for robust matching
+  const isInCart = (productId) => {
+    const pid = String(productId);
+    return sourceItems.some((item) => {
+      if (!item) return false;
+      const ids = buildCandidatesFromItem(item);
+      return ids.has(pid);
+    });
+  };
+
   const [addItemTrigger] = useAddItemMutation();
-  const dispatch = useDispatch();
+  const [removeItemTrigger] = useRemoveItemMutation ? useRemoveItemMutation() : [null];
   const { addItem: addToCompare, isInCompare } = useCompare();
   const navigate = useNavigate();
+
+
+  // helper: find existing cart/server item by matching any candidate id
+  const findExistingByCandidates = (items, wishlistItem) => {
+    const candidates = buildCandidatesFromItem(wishlistItem);
+    if (candidates.size === 0) return null;
+    return items.find((it) => {
+      if (!it) return false;
+      const ids = new Set();
+      if (it.product_id) ids.add(String(it.product_id));
+      if (it.id) ids.add(String(it.id));
+      if (it.sku) ids.add(String(it.sku));
+      if (it.product) {
+        if (it.product.id) ids.add(String(it.product.id));
+        if (it.product.slug) ids.add(String(it.product.slug));
+      }
+      for (const c of candidates) {
+        if (ids.has(c) || ids.has(String(c))) return true;
+      }
+      return false;
+    });
+  };
 
   const handleRemoveFromWishlist = useCallback(
     async (itemId) => {
@@ -161,43 +221,92 @@ export const WishlistDropdown = ({ isOpen, onClose }) => {
     [removeItem]
   );
 
+  // track pending product ids to avoid duplicate rapid clicks
+  const [pendingToggles, setPendingToggles] = useState(new Set());
+  // ref for synchronous reads/writes to avoid race conditions between rapid clicks
+  const pendingRef = useRef(new Set());
+
   const handleAddToCart = useCallback(
     async (item) => {
       if (!item.inStock) return;
 
-      const product = {
-        id: item.product_id,
-        name: item.name,
-        brand: item.brand,
-        price: item.price,
-        originalPrice: item.originalPrice,
-        image: item.image,
-      };
+      // derive canonical/product keys to match cart normalization
+      const canonicalId = String(
+        item.product?.id ?? item.product_id ?? item.sku ?? item.product?.slug ?? item.id ?? ("p-" + (item.product_id ?? item.id ?? Date.now()))
+      );
+      const productKey = String(item.product?.id ?? item.product_id ?? item.sku ?? item.product?.slug ?? item.id ?? "");
+      const pendingKey = canonicalId;
+
+      // prevent duplicate concurrent toggles for same wishlist item using ref for sync
+      if (pendingRef.current.has(pendingKey)) return;
+      pendingRef.current.add(pendingKey);
+      setPendingToggles(new Set(pendingRef.current));
 
       try {
-        const res = await addItemTrigger({
-          product_id: product.id,
-          quantity: 1,
-        }).unwrap();
-        if (res) {
-          // success: optionally remove from wishlist
+        // server toggle for authenticated users
+        if (isAuthenticated) {
+          // find server-side item using robust candidate matching
+          const existing = findExistingByCandidates(serverItems, item);
+
+          if (existing && removeItemTrigger) {
+            try {
+              await removeItemTrigger(existing.id).unwrap();
+              return;
+            } catch (e) {
+              console.warn('server remove failed, falling back to local remove', e);
+            }
+          }
+
+          try {
+            await addItemTrigger({ product_id: productKey, quantity: 1 }).unwrap();
+            return;
+          } catch (e) {
+            console.warn('server add failed, falling back to local', e);
+          }
         }
-      } catch (e) {
-        // fallback to local redux guest cart
-        dispatch(
-          addLocalItem({
-            id: `local-${Date.now()}`,
-            product_id: product.id,
-            variant_id: null,
-            quantity: 1,
-            name: product.name,
-            price: product.price,
-            image: product.image,
-          })
-        );
+
+        // Guest/local toggle: try to find existing local item by canonicalId/productKey
+        const localExisting = cartItems.find((it) => {
+          if (!it) return false;
+          const ids = [String(it.product_id), String(it.id), String(it.sku)];
+          if (it.product) {
+            if (it.product.id) ids.push(String(it.product.id));
+            if (it.product.slug) ids.push(String(it.product.slug));
+          }
+          return ids.includes(productKey) || ids.includes(canonicalId);
+        });
+
+        if (localExisting) {
+          // If present, remove it to toggle off
+          removeLocalCartItem(localExisting.id);
+          return;
+        }
+
+        // Otherwise add using canonical id so cart dedupes consistently
+        addLocalCartItem({
+          id: canonicalId,
+          product_id: canonicalId,
+          variant_id: null,
+          quantity: 1,
+          name: item.name,
+          brand: item.brand,
+          price: item.price,
+          originalPrice: item.originalPrice || null,
+          image: item.image,
+          rating: item.rating || null,
+          reviews: item.reviews || null,
+          inStock: item.inStock !== undefined ? item.inStock : true,
+          colors: item.colors || [],
+        });
+
+        return;
+      } finally {
+        // clear pending flag for this wishlist item (sync + state for UI)
+        pendingRef.current.delete(pendingKey);
+        setPendingToggles(new Set(pendingRef.current));
       }
     },
-    [addItemTrigger, dispatch]
+    [addItemTrigger, addLocalCartItem, cartItems, isAuthenticated, serverItems, removeItemTrigger, removeLocalCartItem]
   );
 
   const handleAddToCompare = useCallback(
@@ -251,16 +360,28 @@ export const WishlistDropdown = ({ isOpen, onClose }) => {
           {/* Wishlist Items */}
           <div className="max-h-80 overflow-y-auto scrollbar-hide">
             {wishlistItems.length > 0 ? (
-              wishlistItems.map((item) => (
-                <WishlistItem
-                  key={item.id}
-                  item={item}
-                  onRemoveFromWishlist={handleRemoveFromWishlist}
-                  onAddToCart={handleAddToCart}
-                  onAddToCompare={handleAddToCompare}
-                  isInCompare={isInCompare}
-                />
-              ))
+              wishlistItems.map((item) => {
+                // canonicalId / productKey to compare consistently against cart & wishlist entries
+                const canonicalId = String(
+                  item.product?.id ?? item.product_id ?? item.sku ?? item.product?.slug ?? item.id ?? ("p-" + (item.product_id ?? item.id ?? Date.now()))
+                );
+                const productKey = String(item.product?.id ?? item.product_id ?? item.sku ?? item.product?.slug ?? item.id ?? "");
+                const boolInCompare = isInCompare(productKey);
+                const boolInCart = isInCart(productKey);
+                const isPending = pendingToggles.has(canonicalId);
+                return (
+                  <WishlistItem
+                    key={item.id}
+                    item={item}
+                    onRemoveFromWishlist={handleRemoveFromWishlist}
+                    onAddToCart={handleAddToCart}
+                    onAddToCompare={handleAddToCompare}
+                    isInCompare={boolInCompare}
+                    isInCart={boolInCart}
+                    isPending={isPending}
+                  />
+                );
+              })
             ) : (
               <div className="p-12 text-center">
                 <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">

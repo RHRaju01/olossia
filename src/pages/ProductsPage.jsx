@@ -14,7 +14,8 @@ import {
   BarChart3,
   Search,
 } from "lucide-react";
-import { useSelector } from "react-redux";
+// cart state is provided by CartContext for local/demo flows
+import { /* useSelector removed */ } from "react-redux";
 import { useAuthRedux } from "../hooks/useAuthRedux";
 import {
   useGetCartQuery,
@@ -22,8 +23,7 @@ import {
   useRemoveItemMutation,
   useGetProductsQuery,
 } from "../services/api";
-import { useDispatch } from "react-redux";
-import { addLocalItem } from "../store/cartSlice";
+import { useCart } from "../contexts/Cart/CartContext";
 import { useWishlist } from "../contexts/WishlistContext";
 import { useCompare } from "../contexts/CompareContext";
 import { useNavigateWithScroll } from "../utils/navigation";
@@ -32,16 +32,15 @@ import { ProductActions } from "../components/commerce/ProductActions";
 import { formatPrice, formatRating } from "../utils/formatNumbers";
 
 export const ProductsPage = () => {
-  const localItems = useSelector((s) => s.cart?.localItems || []);
+  const { items: cartItems, addItem: addLocalCartItem, updateItem, removeItem } = useCart();
   const { isAuthenticated } = useAuthRedux();
   const { data: cartResponse } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
   });
   const serverItems = cartResponse?.data?.items || [];
-  const sourceItems = isAuthenticated ? serverItems : localItems;
+  const sourceItems = isAuthenticated ? serverItems : cartItems;
 
-  const dispatch = useDispatch();
-  const { addItem: addToWishlist, isInWishlist } = useWishlist();
+  const { addItem: addToWishlist, isInWishlist, removeItem: removeFromWishlist, items: wishlistItems } = useWishlist();
   const { addItem: addToCompare, isInCompare } = useCompare();
   const navigate = useNavigateWithScroll();
 
@@ -209,6 +208,18 @@ export const ProductsPage = () => {
   ];
 
   const handleAddToWishlist = async (product) => {
+    const existing = wishlistItems.find((it) => {
+      if (!it) return false;
+      const ids = [it.product_id, it.id, it.sku];
+      if (it.product) ids.push(it.product.id, it.product.slug);
+      return ids.some((x) => x === product.id || String(x) === String(product.id));
+    });
+
+    if (existing) {
+      await removeFromWishlist(existing.id);
+      return;
+    }
+
     await addToWishlist(product);
   };
 
@@ -223,15 +234,16 @@ export const ProductsPage = () => {
     (productId) =>
       sourceItems.some((item) => {
         if (!item) return false;
-        // item may be { product_id } or { product: { id, slug } } or variant keyed
-        if (item.product_id && item.product_id === productId) return true;
-        if (item.sku && item.sku === productId) return true;
-        if (
-          item.product &&
-          (item.product.id === productId || item.product.slug === productId)
-        )
-          return true;
-        return false;
+        const candidateIds = new Set();
+        if (item.product_id) candidateIds.add(item.product_id);
+        if (item.id) candidateIds.add(item.id);
+        if (item.sku) candidateIds.add(item.sku);
+        if (item.product) {
+          if (item.product.id) candidateIds.add(item.product.id);
+          if (item.product.slug) candidateIds.add(item.product.slug);
+        }
+        // compare normalized values
+        return candidateIds.has(productId) || candidateIds.has(String(productId));
       }),
     [sourceItems]
   );
@@ -269,38 +281,49 @@ export const ProductsPage = () => {
         await addItemTrigger({ product_id: product.id, quantity: 1 }).unwrap();
       } catch (e) {
         console.warn("add failed, falling back to local", e);
-        dispatch(
-          addLocalItem({
-            id: `local-${Date.now()}`,
-            product_id: product.id,
-            variant_id: null,
-            quantity: 1,
-            name: product.name,
-            price: product.price,
-            image: product.image,
-          })
-        );
+        addLocalCartItem({
+          id: `local-${Date.now()}`,
+          product_id: product.id,
+          variant_id: null,
+          quantity: 1,
+          name: product.name,
+          brand: product.brand,
+          price: product.price,
+          originalPrice: product.originalPrice || null,
+          image: product.image,
+          rating: product.rating || null,
+          reviews: product.reviews || null,
+          inStock: product.inStock !== undefined ? product.inStock : true,
+          colors: product.colors || [],
+        });
       }
     } else {
-      // Guest: local redux cart toggle behavior
-      const localExists = localItems.some((it) => it.product_id === product.id);
+      // Guest: local cart toggle behavior (match by product_id, id or sku)
+      const localExists = cartItems.find((it) => {
+        if (!it) return false;
+        const ids = [it.product_id, it.id, it.sku];
+        if (it.product) ids.push(it.product.id, it.product.slug);
+        return ids.some((x) => x === product.id || String(x) === String(product.id));
+      });
       if (localExists) {
-        const localId = localItems.find(
-          (it) => it.product_id === product.id
-        ).id;
-        dispatch({ type: "cart/removeLocalItem", payload: localId });
+        const localId = localExists.id;
+        removeItem(localId);
       } else {
-        dispatch(
-          addLocalItem({
-            id: `local-${Date.now()}`,
-            product_id: product.id,
-            variant_id: null,
-            quantity: 1,
-            name: product.name,
-            price: product.price,
-            image: product.image,
-          })
-        );
+        addLocalCartItem({
+          id: `local-${Date.now()}`,
+          product_id: product.id,
+          variant_id: null,
+          quantity: 1,
+          name: product.name,
+          brand: product.brand,
+          price: product.price,
+          originalPrice: product.originalPrice || null,
+          image: product.image,
+          rating: product.rating || null,
+          reviews: product.reviews || null,
+          inStock: product.inStock !== undefined ? product.inStock : true,
+          colors: product.colors || [],
+        });
       }
     }
   };
@@ -692,7 +715,7 @@ export const ProductsPage = () => {
                               size="icon"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleAddToCart(product);
+                                handleToggleCart(product);
                               }}
                               className={`w-10 h-10 rounded-full shadow-lg border-0 transition-all duration-300 ${
                                 isInCart(product.id)
@@ -700,7 +723,7 @@ export const ProductsPage = () => {
                                   : "bg-white/90 lg:hover:bg-white text-gray-700 lg:hover:text-purple-600"
                               }`}
                             >
-                              <ShoppingBag className="w-4 h-4" />
+                              <ShoppingBag className={`w-4 h-4 ${isInCart(product.id) ? 'text-white' : ''}`} />
                             </Button>
                           </div>
                         </div>
@@ -901,7 +924,7 @@ export const ProductsPage = () => {
                             <Button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleAddToCart(product);
+                                handleToggleCart(product);
                               }}
                               className={`font-semibold px-6 py-2 rounded-xl ${
                                 isInCart(product.id)
@@ -909,7 +932,7 @@ export const ProductsPage = () => {
                                   : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
                               }`}
                             >
-                              <ShoppingBag className="w-4 h-4 mr-2" />
+                              <ShoppingBag className={`w-4 h-4 mr-2 ${isInCart(product.id) ? 'text-white' : ''}`} />
                               {isInCart(product.id)
                                 ? "Added to Cart"
                                 : "Add to Cart"}

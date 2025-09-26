@@ -16,26 +16,29 @@ import {
 } from "lucide-react";
 import { BarChart3 } from "lucide-react";
 import { Button, SearchBar } from "../ui";
+import { ActionButton } from "../ui/ActionButton";
 import { CartDropdown } from "../commerce/CartDropdown";
 import { WishlistDropdown } from "../commerce/WishlistDropdown";
 import { NotificationDropdown } from "../ui/NotificationDropdown";
 import { CompareDropdown } from "../commerce/CompareDropdown";
 import { useSelector } from "react-redux";
+import { useCart } from "../../contexts/Cart/CartContext";
 import { useWishlist } from "../../contexts/WishlistContext";
 import { useCompare } from "../../contexts/CompareContext";
 import { useGetCartQuery } from "../../services/api";
 import { useAuthRedux } from "../../hooks/useAuthRedux";
 import { UserDropdown } from "../user/UserMenu";
 
-export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
+export const HeaderSection = React.memo(({ onAuthModalOpen, vertical = false }) => {
   const navigate = useNavigateWithScroll();
   const { isAuthenticated, user, isAuthLocked, profile } = useAuthRedux();
   // Prefer RTK Query cart totals when available (skip for guests)
   const { data: cartResponse } = useGetCartQuery(undefined, {
     skip: !isAuthenticated,
   });
-  // Fallback to local redux guest cart totals
-  const ctxItems = useSelector((s) => s.cart?.localItems || []);
+  // Fallback to CartContext guest cart totals when not authenticated
+  const ctx = useCart();
+  const ctxItems = ctx?.items || [];
 
   const cartItems = cartResponse?.data?.items || ctxItems || [];
   const totals = cartItems.length
@@ -51,23 +54,37 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
         })(),
       }
     : { subtotal: 0, itemCount: 0, shipping: 0 };
-  const { items: wishlistItems } = useWishlist();
-  const { items: compareItems } = useCompare();
+  const { items: wishlistItems, addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist } = useWishlist();
+  const { items: compareItems, addItem: addToCompare, removeItem: removeFromCompare, isInCompare } = useCompare();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
+  const [isBrandsOpen, setIsBrandsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [userMenuVersion, setUserMenuVersion] = useState(0);
 
-  const navItems = [
-    { name: "Women", path: "/products?category=women" },
-    { name: "Men", path: "/products?category=men" },
-    { name: "Kids", path: "/products?category=kids" },
-    { name: "Beauty", path: "/products?category=beauty" },
-    { name: "Home", path: "/products?category=home" },
+  // Categories moved into a dropdown
+  const categories = [
+    { name: "Women", path: "/products?category=women", image: "/frame-16377.svg" },
+    { name: "Men", path: "/products?category=men", image: "/frame-16378.svg" },
+    { name: "Kids", path: "/products?category=kids", image: "/frame-16395.svg" },
+    { name: "Beauty", path: "/products?category=beauty", image: "/frame-16396.svg" },
+    { name: "Home", path: "/products?category=home", image: "/frame-16397.svg" },
+    { name: "Accessories", path: "/products?category=accessories", image: "/frame-16398.svg" },
+    { name: "Sale", path: "/products?category=sale", image: "/frame-16400.svg" },
+  ];
+
+  const brands = [
+    { name: "Gucci", path: "/products?brand=gucci" },
+    { name: "Prada", path: "/products?brand=prada" },
+    { name: "Hermès", path: "/products?brand=hermes" },
+    { name: "Levi's", path: "/products?brand=levis" },
+    { name: "Nike", path: "/products?brand=nike" },
+    { name: "Adidas", path: "/products?brand=adidas" },
   ];
 
   const handleNavClick = (path) => {
@@ -98,6 +115,12 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
       if (!isMenuOpen && !event.target.closest(".user-dropdown-container")) {
         setIsUserMenuOpen(false);
       }
+      if (!isMenuOpen && !event.target.closest(".categories-dropdown-container")) {
+        setIsCategoriesOpen(false);
+      }
+      if (!isMenuOpen && !event.target.closest(".brands-dropdown-container")) {
+        setIsBrandsOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -116,6 +139,8 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
     setIsNotificationOpen(dropdownType === "notification");
     setIsCompareOpen(dropdownType === "compare");
     setIsUserMenuOpen(dropdownType === "user");
+    setIsCategoriesOpen(dropdownType === "categories");
+    setIsBrandsOpen(dropdownType === "brands");
   };
 
   // Bump a version when the authenticated user identity changes so dropdown
@@ -170,6 +195,8 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
     }
   };
 
+  
+
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100/50">
       {/* Top promotional bar */}
@@ -193,17 +220,97 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-1">
-            {navItems.map((item) => (
+          <nav className="hidden lg:flex items-center space-x-0.5">
+            {/* Categories dropdown */}
+            <div className="relative categories-dropdown-container">
               <Button
-                key={item.name}
                 variant="ghost"
-                onClick={() => handleNavClick(item.path)}
                 className="text-gray-700 hover:text-purple-600 hover:bg-purple-50 font-medium px-6 py-2 rounded-full transition-all duration-200"
+                onMouseEnter={() => handleDesktopDropdownOpen('categories')}
+                onClick={() => handleDesktopDropdownOpen(isCategoriesOpen ? null : 'categories')}
               >
-                {item.name}
+                Categories
               </Button>
-            ))}
+              {/* Desktop categories menu - only display when menu is not the mobile menu */}
+              {isCategoriesOpen && !isMenuOpen && (
+                <div className="absolute left-0 mt-2 w-[520px] bg-white border border-gray-100 rounded-2xl shadow-2xl p-4 z-50 animate-dropdown">
+                  <div className="mb-3 px-2">
+                    <h4 className="text-sm font-semibold text-purple-600">Categories</h4>
+                    <p className="text-xs text-purple-400">Shop by category</p>
+                  </div>
+                  <div className="max-h-[60vh] overflow-y-auto scrollbar-hide">
+                    <div className="grid grid-cols-3 gap-3">
+                      {categories.map((c) => (
+                        <button
+                          key={c.name}
+                          onClick={() => handleNavClick(c.path)}
+                          className="text-left p-4 rounded-lg bg-white border border-purple-50 hover:shadow-md hover:scale-[1.02] transform transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                        >
+                          <div className="text-sm font-medium text-gray-900">{c.name}</div>
+                          <div className="text-xs text-purple-500 mt-1">Explore the latest {c.name.toLowerCase()} collections</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Brands dropdown */}
+            <div className="relative brands-dropdown-container">
+              <Button
+                variant="ghost"
+                className="text-gray-700 hover:text-purple-600 hover:bg-purple-50 font-medium px-6 py-2 rounded-full transition-all duration-200"
+                onMouseEnter={() => handleDesktopDropdownOpen('brands')}
+                onClick={() => handleDesktopDropdownOpen(isBrandsOpen ? null : 'brands')}
+              >
+                Brands
+              </Button>
+              {isBrandsOpen && !isMenuOpen && (
+                <div className="absolute left-0 mt-2 w-64 bg-white border border-gray-100 rounded-2xl shadow-2xl p-3 z-50">
+                  <div className="mb-2 px-2">
+                    <h4 className="text-sm font-semibold text-purple-600">Brands</h4>
+                  </div>
+                  <div className="max-h-[60vh] overflow-y-auto scrollbar-hide">
+                    <div className="grid grid-cols-2 gap-2">
+                      {brands.map((b) => (
+                        <button
+                          key={b.name}
+                          onClick={() => handleNavClick(b.path)}
+                          className="text-left p-3 rounded-lg bg-white border border-purple-50 hover:shadow-sm hover:bg-purple-50/40 transform transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                        >
+                          <div className="text-sm font-medium text-gray-900">{b.name}</div>
+                          <div className="text-xs text-purple-500 mt-0.5">Shop {b.name} products</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Independent nav links */}
+            <Button
+              variant="ghost"
+              onClick={() => handleNavClick('/shows')}
+              className="text-gray-700 hover:text-purple-600 hover:bg-purple-50 font-medium px-4 py-1.5 rounded-full transition-all duration-200 text-sm"
+            >
+              Shows
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => handleNavClick('/offers')}
+              className="text-gray-700 hover:text-purple-600 hover:bg-purple-50 font-medium px-4 py-1.5 rounded-full transition-all duration-200 text-sm"
+            >
+              Offers
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => handleNavClick('/new-arrivals')}
+              className="text-gray-700 hover:text-purple-600 hover:bg-purple-50 font-medium px-4 py-1.5 rounded-full transition-all duration-200 text-sm"
+            >
+              New Arrivals
+            </Button>
           </nav>
 
           {/* Search Bar */}
@@ -404,7 +511,7 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                   Categories
                 </p>
               </div>
-              {navItems.map((item) => (
+              {categories.map((item) => (
                 <Button
                   key={item.name}
                   variant="ghost"
@@ -499,6 +606,10 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                                   variant="outline"
                                   size="icon"
                                   className="w-8 h-8 rounded-full hover:bg-purple-50 hover:border-purple-200"
+                                  onClick={() => {
+                                    // toggle cart for this wishlist item
+                                    ctx.toggleItem(item);
+                                  }}
                                 >
                                   <ShoppingBag className="w-3 h-3 text-purple-600" />
                                 </Button>
@@ -506,6 +617,22 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                                   variant="outline"
                                   size="icon"
                                   className="w-8 h-8 rounded-full hover:bg-blue-50 hover:border-blue-200"
+                                  onClick={async () => {
+                                    // toggle compare for this item
+                                    try {
+                                      if (isInCompare(item.id) || isInCompare(item.product_id)) {
+                                        // try removing by finding the compare item id if available
+                                        const existing = compareItems.find((it) => it && (it.product_id === item.product_id || it.id === item.product_id || it.sku === item.product_id));
+                                        if (existing && removeFromCompare) {
+                                          await removeFromCompare(existing.id);
+                                          return;
+                                        }
+                                      }
+                                    } catch (e) {
+                                      // ignore removal error
+                                    }
+                                    await addToCompare(item);
+                                  }}
                                 >
                                   <BarChart3 className="w-3 h-3 text-blue-600" />
                                 </Button>
@@ -592,6 +719,22 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                                   variant="outline"
                                   size="icon"
                                   className="w-8 h-8 rounded-full hover:bg-red-50 hover:border-red-200"
+                                  onClick={async () => {
+                                    // toggle wishlist for this compare item
+                                    try {
+                                      const pid = item.product_id || item.id;
+                                      if (isInWishlist(pid)) {
+                                        const existing = wishlistItems.find((it) => it && (it.product_id === pid || it.id === pid || it.sku === pid));
+                                        if (existing) {
+                                          await removeFromWishlist(existing.id);
+                                          return;
+                                        }
+                                      }
+                                    } catch (e) {
+                                      /* ignore */
+                                    }
+                                    await addToWishlist(item);
+                                  }}
                                 >
                                   <Heart className="w-3 h-3 text-red-600" />
                                 </Button>
@@ -599,6 +742,10 @@ export const HeaderSection = React.memo(({ onAuthModalOpen }) => {
                                   variant="outline"
                                   size="icon"
                                   className="w-8 h-8 rounded-full hover:bg-purple-50 hover:border-purple-200"
+                                  onClick={() => {
+                                    // toggle cart from compare list
+                                    ctx.toggleItem(item);
+                                  }}
                                 >
                                   <ShoppingBag className="w-3 h-3 text-purple-600" />
                                 </Button>
